@@ -36,6 +36,16 @@ object OpenExteraConfig {
     @JvmField
     val relativeLastSeen = addConfig("OERelativeLastSeen", ConfigItem.configTypeBool, false)
 
+    // ---- extraBadges ----
+
+    /** Tells the extraBadges server that this account uses the client. */
+    @JvmField
+    val showClientMark = addConfig("OEShowClientMark", ConfigItem.configTypeBool, true)
+
+    /** Loads and draws extraBadges badges and client marks of other users. */
+    @JvmField
+    val showExtraBadges = addConfig("OEShowExtraBadges", ConfigItem.configTypeBool, true)
+
     // ---- Чаты ----
 
     /** Запятая после упоминания: «@user, » вместо «@user ». */

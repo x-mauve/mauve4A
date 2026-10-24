@@ -185,6 +185,9 @@ android {
         buildConfigField 'int', 'APP_ID', appId
         buildConfigField 'String', 'APP_HASH', '"' + appHash + '"'
         buildConfigField 'long', 'BUILD_TIMESTAMP', buildTimestamp + 'L'
+        // extraBadges server and the bot that signs Mini App init data; empty values disable the feature
+        buildConfigField 'String', 'EXTRABADGES_URL', '"' + (properties?.getProperty('EXTRABADGES_URL') ?: System.getenv('EXTRABADGES_URL') ?: '') + '"'
+        buildConfigField 'String', 'EXTRABADGES_BOT', '"' + (properties?.getProperty('EXTRABADGES_BOT') ?: System.getenv('EXTRABADGES_BOT') ?: '') + '"'
         buildConfigField 'boolean', 'DEBUG_TOOLS', String.valueOf(project.findProperty('debugTools') == 'true')
 
         externalNativeBuild {
