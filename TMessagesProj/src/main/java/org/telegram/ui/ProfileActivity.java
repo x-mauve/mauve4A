@@ -6148,7 +6148,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         idDateHint.setShowingDuration(4500);
         frameLayout.addView(idDateHint, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 12, 0, 12, 0));
 
-        badgeHint = new HintView(getParentActivity(), 7, false) {
+        badgeHint = new HintView(getParentActivity(), 8, false) {
             @Override
             protected int offsetCx() {
                 return badgeHintOffset;
