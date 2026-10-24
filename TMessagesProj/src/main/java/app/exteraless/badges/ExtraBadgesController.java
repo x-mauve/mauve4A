@@ -200,6 +200,7 @@ public final class ExtraBadgesController {
         client().newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                FileLog.e("extraBadges: lookup failed", e);
                 finish(batch);
             }
 
@@ -208,6 +209,8 @@ public final class ExtraBadgesController {
                 try (response) {
                     if (response.isSuccessful()) {
                         applyLookup(batch, new JSONObject(response.body().string()).optJSONObject("users"));
+                    } else {
+                        FileLog.e("extraBadges: lookup failed with " + response.code());
                     }
                 } catch (Exception e) {
                     FileLog.e(e);
@@ -254,6 +257,7 @@ public final class ExtraBadgesController {
         client().newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                FileLog.e("extraBadges: config failed", e);
                 configLoading = false;
             }
 

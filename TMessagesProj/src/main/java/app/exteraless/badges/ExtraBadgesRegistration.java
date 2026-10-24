@@ -130,6 +130,9 @@ public final class ExtraBadgesRegistration {
                 String initData = null;
                 if (response instanceof TLRPC.TL_webViewResultUrl) {
                     initData = extractInitData(((TLRPC.TL_webViewResultUrl) response).url);
+                    if (initData == null) {
+                        FileLog.e("extraBadges: no init data in the Mini App URL");
+                    }
                 } else if (error != null) {
                     FileLog.e("extraBadges: init data request failed: " + error.text);
                 }
@@ -173,6 +176,7 @@ public final class ExtraBadgesRegistration {
         ExtraBadgesController.client().newCall(builder.build()).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                FileLog.e("extraBadges: " + (register ? "register" : "hide") + " failed", e);
                 callback.run(false);
             }
 
