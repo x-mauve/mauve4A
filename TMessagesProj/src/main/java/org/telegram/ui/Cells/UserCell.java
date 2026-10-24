@@ -38,6 +38,8 @@ import org.telegram.messenger.Emoji;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
+import com.exteragram.messenger.api.dto.BadgeDTO;
+import app.exteraless.badges.ExtraBadgesController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
@@ -63,6 +65,8 @@ import org.telegram.ui.Stories.StoriesListPlaceProvider;
 import org.telegram.ui.Stories.StoriesUtilities;
 
 import tw.nekomimi.nekogram.NekoConfig;
+
+import java.util.ArrayList;
 
 public class UserCell extends FrameLayout implements NotificationCenter.NotificationCenterDelegate, Theme.Colorable {
 
@@ -199,6 +203,12 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
 
         botVerification = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView, dp(20));
         emojiStatus = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView, dp(20));
+        NotificationCenter.getGlobalInstance().listen(this, NotificationCenter.extraBadgesDidLoad, args -> {
+            ArrayList<Long> ids = (ArrayList<Long>) args[0];
+            if (currentObject instanceof TLRPC.User && ids.contains(((TLRPC.User) currentObject).id)) {
+                update(0);
+            }
+        });
 
         statusTextView = new SimpleTextView(context);
         statusTextView.setTextSize(15);
@@ -713,7 +723,14 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
             }
             nameTextView.setRightDrawableTopPadding(-dp(0.5f));
         } else {
-            nameTextView.setRightDrawable(null);
+            BadgeDTO extraBadge = ExtraBadgesController.getChatBadge(currentUser, currentAccount);
+            if (extraBadge != null) {
+                emojiStatus.set(extraBadge.getDocumentId(), false);
+                emojiStatus.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
+                nameTextView.setRightDrawable(emojiStatus);
+            } else {
+                nameTextView.setRightDrawable(null);
+            }
             nameTextView.setRightDrawableTopPadding(0);
         }
         if (currentStatus != null) {

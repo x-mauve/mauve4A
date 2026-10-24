@@ -41,6 +41,8 @@ import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
+import java.util.ArrayList;
+import app.exteraless.badges.ExtraBadgesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
@@ -174,6 +176,12 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
 
         statusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(this, dp(20));
         statusDrawable.setCallback(this);
+        NotificationCenter.getGlobalInstance().listen(this, NotificationCenter.extraBadgesDidLoad, args -> {
+            ArrayList<Long> ids = (ArrayList<Long>) args[0];
+            if (user != null && ids.contains(user.id)) {
+                update(0);
+            }
+        });
     }
 
     private boolean allowBotOpenButton;
@@ -804,6 +812,9 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
             statusDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
         } else if (allowEmojiStatus && user != null && !savedMessages && MessagesController.getInstance(currentAccount).isPremiumUser(user)) {
             statusDrawable.set(PremiumGradient.getInstance().premiumStarDrawableMini, animated);
+            statusDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
+        } else if (allowEmojiStatus && !savedMessages && ExtraBadgesController.getChatBadge(user, currentAccount) != null) {
+            statusDrawable.set(ExtraBadgesController.getChatBadge(user, currentAccount).getDocumentId(), animated);
             statusDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
         } else {
             statusDrawable.set((Drawable) null, animated);
