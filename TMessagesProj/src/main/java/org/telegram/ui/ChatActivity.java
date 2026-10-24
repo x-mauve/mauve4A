@@ -209,6 +209,7 @@ import org.telegram.messenger.MessageSuggestionParams;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
+import app.exteraless.badges.ExtraBadgesController;
 import org.telegram.messenger.NotificationsController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SecretChatHelper;
@@ -4786,6 +4787,12 @@ public class ChatActivity extends BaseFragment implements
                 return isInPreviewMode();
             }
         };
+        NotificationCenter.getGlobalInstance().listen(avatarContainer, NotificationCenter.extraBadgesDidLoad, args -> {
+            ArrayList<Long> ids = (ArrayList<Long>) args[0];
+            if (currentUser != null && ids.contains(currentUser.id)) {
+                updateTitle(true);
+            }
+        });
         app.exteraless.appearance.ChatHeaderUiHelper.setupGlassAvatarContainer(avatarContainer);
         avatarContainer.allowShorterStatus = true;
         avatarContainer.premiumIconHiddable = true;
@@ -21081,6 +21088,9 @@ public class ChatActivity extends BaseFragment implements
                 }
             } else {
                 avatarContainer.setTitle(AndroidUtilities.removeRTL(AndroidUtilities.removeDiacritics(UserObject.getUserName(currentUser))), currentUser.scam, currentUser.fake, currentUser.verified, getMessagesController().isPremiumUser(currentUser), !MessagesController.isSupportUser(currentUser) ? currentUser.emoji_status : null, animated);
+            }
+            if (!currentUser.self) {
+                avatarContainer.setExtraBadge(ExtraBadgesController.getChatBadge(currentUser, currentAccount), animated);
             }
         }
         setParentActivityTitle(avatarContainer.getTitleTextView().getText());

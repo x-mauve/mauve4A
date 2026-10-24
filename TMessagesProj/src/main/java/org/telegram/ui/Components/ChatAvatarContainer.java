@@ -45,6 +45,7 @@ import app.exteraless.appearance.ChatHeaderUiHelper;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
+import com.exteragram.messenger.api.dto.BadgeDTO;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.Emoji;
@@ -1235,6 +1236,17 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     }
 
     private Drawable emojiStatusDefaultDrawable;
+
+    /** Puts the extraBadges badge into the emoji status slot when that slot is free. */
+    public void setExtraBadge(BadgeDTO badge, boolean animated) {
+        if (badge == null || titleTextView.getRightDrawable() != null) {
+            return;
+        }
+        emojiStatusDrawable.set(badge.getDocumentId(), animated);
+        emojiStatusDrawable.setColor(getThemedColor(Theme.key_profile_verifiedBackground));
+        titleTextView.setRightDrawable(emojiStatusDrawable);
+        rightDrawableContentDescription = badge.getText();
+    }
     private Drawable verifiedBackground;
     private Drawable verifiedCheck;
 
