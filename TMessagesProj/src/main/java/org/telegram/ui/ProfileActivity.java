@@ -276,6 +276,9 @@ import org.telegram.ui.Components.ProfileMusicView;
 import app.exteraless.components.ProfileMusicCard;
 import com.exteragram.messenger.api.dto.BadgeDTO;
 import com.exteragram.messenger.badges.BadgesController;
+
+import app.exteraless.badges.ExtraBadgesController;
+import app.exteraless.components.PairDrawable;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.Components.RadialProgressView;
@@ -434,6 +437,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     private HintView fwdRestrictedHint;
     private HintView idDateHint;
+    private HintView badgeHint;
+    private int badgeHintOffset;
 //    private ProfileMetaballView metaball;
     private FrameLayout avatarContainer;
     private FrameLayout avatarContainer2;
@@ -2329,6 +2334,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         getNotificationCenter().addObserver(this, NotificationCenter.profileMusicUpdated);
         getNotificationCenter().addObserver(this, NotificationCenter.updatedChatRanks);
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
+        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.extraBadgesDidLoad);
         // exteraless plugins: реестр пунктов меняется, когда плагин включают/выключают.
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.pluginMenuItemsUpdated);
         updateRowsIds();
@@ -2480,6 +2486,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         getNotificationCenter().removeObserver(this, NotificationCenter.profileMusicUpdated);
         getNotificationCenter().removeObserver(this, NotificationCenter.updatedChatRanks);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.emojiLoaded);
+        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.extraBadgesDidLoad);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.pluginMenuItemsUpdated);
         if (avatarsViewPager != null) {
             avatarsViewPager.onDestroy();
@@ -6093,6 +6100,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 if (idDateHint != null) {
                     idDateHint.hide();
                 }
+                if (badgeHint != null) {
+                    badgeHint.hide();
+                }
                 checkListViewScroll();
                 if (participantsMap != null && !usersEndReached && layoutManager.findLastVisibleItemPosition() > membersEndRow - 8) {
                     getChannelParticipants(false);
@@ -6137,6 +6147,16 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         idDateHint.setAlpha(0);
         idDateHint.setShowingDuration(4500);
         frameLayout.addView(idDateHint, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 12, 0, 12, 0));
+
+        badgeHint = new HintView(getParentActivity(), 7, false) {
+            @Override
+            protected int offsetCx() {
+                return badgeHintOffset;
+            }
+        };
+        badgeHint.setAlpha(0);
+        badgeHint.setShowingDuration(4500);
+        frameLayout.addView(badgeHint, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 12, 0, 12, 0));
 
         ViewGroup decorView;
         decorView = (ViewGroup) getParentActivity().getWindow().getDecorView();
@@ -9714,6 +9734,12 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (listView != null) {
                 listView.invalidateViews();
             }
+        } else if (id == NotificationCenter.extraBadgesDidLoad) {
+            ArrayList<Long> ids = (ArrayList<Long>) args[0];
+            if (userId != 0 && (ids.isEmpty() || ids.contains(userId))) {
+                updateProfileData(false);
+                updateListAnimated(false);
+            }
         } else if (id == NotificationCenter.reloadInterface) {
             updateListAnimated(false);
         } else if (id == NotificationCenter.newSuggestionsAvailable) {
@@ -11701,6 +11727,25 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         return emojiStatusDrawable[a];
     }
 
+    // The extraBadges badge always goes last, after verification or the scam mark
+    private Drawable withBadge(Drawable mark, BadgeDTO badge, boolean animated, int a) {
+        return badge == null ? mark : new PairDrawable(mark, getBadgeDrawable(badge, animated, a), dp(4));
+    }
+
+    private void showBadgeHint(int a, BadgeDTO badge) {
+        if (badgeHint == null || badgeDrawable[a] == null || TextUtils.isEmpty(badge.getText())) {
+            return;
+        }
+        if (badgeHint.getTag() != null) {
+            badgeHint.hide();
+            return;
+        }
+        SimpleTextView view = nameTextView[a];
+        badgeHintOffset = (int) ((badgeDrawable[a].getBounds().centerX() - view.getMeasuredWidth() / 2f) * view.getScaleX());
+        badgeHint.setText(badge.getText());
+        badgeHint.showForView(view, true);
+    }
+
     private Drawable getBadgeDrawable(BadgeDTO badge, boolean animated, int a) {
         if (badgeDrawable[a] == null) {
             badgeDrawable[a] = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView[a], AndroidUtilities.dp(24), a == 0 ? AnimatedEmojiDrawable.CACHE_TYPE_EMOJI_STATUS : AnimatedEmojiDrawable.CACHE_TYPE_KEYBOARD);
@@ -12014,17 +12059,17 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 boolean rightIconIsPremium = false, rightIconIsStatus = false;
                 nameTextView[a].setRightDrawableOutside(a == 0);
                 if (a == 0 && !copyFromChatActivity) {
+                    ExtraBadgesController.request(user.id);
                     BadgeDTO userBadge = BadgesController.INSTANCE.getBadge(user);
                     nameTextView[a].setRightDrawable2OnClick(null);
                     if (user.scam || user.fake) {
-                        nameTextView[a].setRightDrawable2(getScamDrawable(user.scam ? 0 : 1));
+                        nameTextView[a].setRightDrawable2(withBadge(getScamDrawable(user.scam ? 0 : 1), userBadge, false, a));
                         nameTextViewRightDrawable2ContentDescription = LocaleController.getString(R.string.ScamMessage);
                     } else if (user.verified) {
-                        nameTextView[a].setRightDrawable2(getVerifiedCrossfadeDrawable(a));
+                        nameTextView[a].setRightDrawable2(withBadge(getVerifiedCrossfadeDrawable(a), userBadge, false, a));
                         nameTextViewRightDrawable2ContentDescription = LocaleController.getString(R.string.AccDescrVerified);
                     } else if (userBadge != null) {
                         nameTextView[a].setRightDrawable2(getBadgeDrawable(userBadge, false, a));
-                        nameTextView[a].setRightDrawable2OnClick(v -> BadgesController.INSTANCE.showBadgeBulletin(this, userBadge, user, resourcesProvider, currentAccount));
                         nameTextViewRightDrawable2ContentDescription = userBadge.getText();
                     } else if (getMessagesController().isDialogMuted(dialogId != 0 ? dialogId : userId, topicId)) {
                         nameTextView[a].setRightDrawable2(getThemedDrawable(Theme.key_drawable_muteIconDrawable));
@@ -12032,6 +12077,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     } else {
                         nameTextView[a].setRightDrawable2(null);
                         nameTextViewRightDrawable2ContentDescription = null;
+                    }
+                    if (userBadge != null) {
+                        final int index = a;
+                        nameTextView[a].setRightDrawable2OnClick(v -> showBadgeHint(index, userBadge));
                     }
                     Long selfEmojiDocId = (user != null && user.self) ? UserObject.getEmojiStatusDocumentId(user) : null;
                     if (user != null/* && !getMessagesController().premiumFeaturesBlocked()*/ && !MessagesController.isSupportUser(user) && (DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0 || (user.self && selfEmojiDocId != null && selfEmojiDocId != 0))) {
@@ -12058,14 +12107,17 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     BadgeDTO userBadge = BadgesController.INSTANCE.getBadge(user);
                     nameTextView[a].setRightDrawable2OnClick(null);
                     if (user.scam || user.fake) {
-                        nameTextView[a].setRightDrawable2(getScamDrawable(user.scam ? 0 : 1));
+                        nameTextView[a].setRightDrawable2(withBadge(getScamDrawable(user.scam ? 0 : 1), userBadge, true, a));
                     } else if (user.verified) {
-                        nameTextView[a].setRightDrawable2(getVerifiedCrossfadeDrawable(a));
+                        nameTextView[a].setRightDrawable2(withBadge(getVerifiedCrossfadeDrawable(a), userBadge, true, a));
                     } else if (userBadge != null) {
                         nameTextView[a].setRightDrawable2(getBadgeDrawable(userBadge, true, a));
-                        nameTextView[a].setRightDrawable2OnClick(v -> BadgesController.INSTANCE.showBadgeBulletin(this, userBadge, user, resourcesProvider, currentAccount));
                     } else {
                         nameTextView[a].setRightDrawable2(null);
+                    }
+                    if (userBadge != null) {
+                        final int index = a;
+                        nameTextView[a].setRightDrawable2OnClick(v -> showBadgeHint(index, userBadge));
                     }
                     Long selfEmojiDocId2 = (user != null && user.self) ? UserObject.getEmojiStatusDocumentId(user) : null;
                     if (/*!getMessagesController().premiumFeaturesBlocked() && */user != null && !MessagesController.isSupportUser(user) && (DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0 || (user.self && selfEmojiDocId2 != null && selfEmojiDocId2 != 0))) {
