@@ -7218,6 +7218,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         app.exteraless.plugins.PluginsController.getInstance().executeOnAppEvent(app.exteraless.plugins.PluginsConstants.EVENT_APP_RESUME);
         app.exteraless.plugins.PluginDenialNotice.flush();
         app.exteraless.crash.CrashReportDialog.showIfPending(this);
+        app.exteraless.badges.ExtraBadgesController.warmUp();
         app.exteraless.badges.ExtraBadgesRegistration.checkAll();
         pipActivityHandler.onResume();
         if (onResumeStaticCallback != null) {

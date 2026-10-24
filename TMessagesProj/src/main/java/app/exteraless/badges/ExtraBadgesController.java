@@ -48,6 +48,7 @@ public final class ExtraBadgesController {
 
     private static final long LOOKUP_TTL = TimeUnit.HOURS.toMillis(1);
     private static final long CONFIG_TTL = TimeUnit.HOURS.toMillis(24);
+    private static final long DISK_TTL = TimeUnit.DAYS.toMillis(7);
     private static final long BATCH_DELAY = 300;
     private static final int BATCH_LIMIT = 100;
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
@@ -56,6 +57,7 @@ public final class ExtraBadgesController {
     private static final String KEY_MARK_EMOJI = "mark_emoji_id";
     private static final String KEY_MARK_TEXT = "mark_text";
     private static final String KEY_CONFIG_TIME = "config_time";
+    private static final String USERS_PREFS_NAME = "exteraless_extrabadges_users";
 
     private static final class Entry {
         final long time;
@@ -71,6 +73,7 @@ public final class ExtraBadgesController {
     private static final HashSet<Long> pending = new HashSet<>();
     private static final HashSet<Long> inFlight = new HashSet<>();
     private static boolean flushScheduled;
+    private static volatile boolean diskLoaded;
     private static boolean configLoading;
     private static OkHttpClient client;
 
@@ -81,11 +84,21 @@ public final class ExtraBadgesController {
         return !TextUtils.isEmpty(BuildConfig.EXTRABADGES_URL) && OpenExteraConfig.showExtraBadges.Bool();
     }
 
+    /** Loads cached lookups and the config ahead of time, so nothing waits for the network. */
+    public static void warmUp() {
+        if (!isEnabled()) {
+            return;
+        }
+        ensureDiskLoaded();
+        loadConfig();
+    }
+
     /** Queues a lookup for the user unless fresh data is already cached. */
     public static void request(long userId) {
         if (userId <= 0 || !isEnabled()) {
             return;
         }
+        ensureDiskLoaded();
         Entry entry = entries.get(userId);
         if (entry != null && System.currentTimeMillis() - entry.time < LOOKUP_TTL) {
             return;
@@ -118,6 +131,7 @@ public final class ExtraBadgesController {
         if (!isEnabled()) {
             return false;
         }
+        ensureDiskLoaded();
         Entry entry = entries.get(userId);
         return entry != null && entry.client;
     }
@@ -136,11 +150,16 @@ public final class ExtraBadgesController {
     public static void clear() {
         entries.clear();
         BadgesController.INSTANCE.getApiBadgeSource().clear();
+        usersPrefs().edit().clear().apply();
     }
 
-    /** Drops cached data for the user, e.g. after the own mark was toggled. */
+    /** Refetches the user, e.g. after the own mark was toggled; cached data stays visible meanwhile. */
     public static void invalidate(long userId) {
-        entries.remove(userId);
+        Entry entry = entries.get(userId);
+        if (entry != null) {
+            entries.put(userId, new Entry(0, entry.client));
+        }
+        request(userId);
     }
 
     static String url(String path) {
@@ -167,6 +186,49 @@ public final class ExtraBadgesController {
 
     private static SharedPreferences prefs() {
         return ApplicationLoader.applicationContext.getSharedPreferences(PREFS_NAME, 0);
+    }
+
+    private static SharedPreferences usersPrefs() {
+        return ApplicationLoader.applicationContext.getSharedPreferences(USERS_PREFS_NAME, 0);
+    }
+
+    // Stale entries are still shown until a lookup refreshes them; week-old ones are dropped
+    private static void ensureDiskLoaded() {
+        if (diskLoaded) {
+            return;
+        }
+        synchronized (entries) {
+            if (diskLoaded) {
+                return;
+            }
+            long now = System.currentTimeMillis();
+            SharedPreferences preferences = usersPrefs();
+            SharedPreferences.Editor editor = null;
+            for (java.util.Map.Entry<String, ?> stored : preferences.getAll().entrySet()) {
+                try {
+                    long id = Long.parseLong(stored.getKey());
+                    JSONObject json = new JSONObject(String.valueOf(stored.getValue()));
+                    long time = json.optLong("t");
+                    if (now - time > DISK_TTL) {
+                        throw new IllegalStateException("expired");
+                    }
+                    entries.putIfAbsent(id, new Entry(time, json.optBoolean("c")));
+                    long emojiId = json.optLong("e");
+                    if (emojiId > 0 && BadgesController.INSTANCE.getApiBadgeSource().getInfo(id) == null) {
+                        BadgesController.INSTANCE.getApiBadgeSource().put(id, new BadgeInfo(new BadgeDTO(emojiId, json.optString("d", "")), ProfileStatus.DEFAULT, false));
+                    }
+                } catch (Exception e) {
+                    if (editor == null) {
+                        editor = preferences.edit();
+                    }
+                    editor.remove(stored.getKey());
+                }
+            }
+            if (editor != null) {
+                editor.apply();
+            }
+            diskLoaded = true;
+        }
     }
 
     private static void flush() {
@@ -229,6 +291,7 @@ public final class ExtraBadgesController {
 
     private static void applyLookup(ArrayList<Long> batch, JSONObject users) {
         long now = System.currentTimeMillis();
+        SharedPreferences.Editor editor = usersPrefs().edit();
         // Ids missing from the response have neither a mark nor a badge
         for (Long id : batch) {
             JSONObject user = users != null ? users.optJSONObject(String.valueOf(id)) : null;
@@ -243,7 +306,17 @@ public final class ExtraBadgesController {
             }
             entries.put(id, new Entry(now, isClient));
             BadgesController.INSTANCE.getApiBadgeSource().put(id, badge != null ? new BadgeInfo(badge, ProfileStatus.DEFAULT, false) : null);
+            try {
+                JSONObject stored = new JSONObject().put("t", now).put("c", isClient);
+                if (badge != null) {
+                    stored.put("e", badge.getDocumentId()).put("d", badge.getText());
+                }
+                editor.putString(String.valueOf(id), stored.toString());
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
         }
+        editor.apply();
         AndroidUtilities.runOnUIThread(() -> NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.extraBadgesDidLoad, batch));
     }
 
