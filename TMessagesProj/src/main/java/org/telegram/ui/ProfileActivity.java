@@ -14813,7 +14813,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         TLObject obj = getMessagesController().getUserOrChat(did);
                         TL_bots.BotVerification bot_verification = userInfo != null ? userInfo.bot_verification : chatInfo != null ? chatInfo.bot_verification : null;
                         Long bot_manager_id = userInfo != null && TLObject.hasFlag(userInfo.flags2, TLObject.FLAG_25) ? userInfo.bot_manager_id : null;
-                        final String clientMarkText = userId != 0 && ExtraBadgesController.isClient(userId) ? ExtraBadgesController.getClientMarkText() : null;
+                        final String clientMarkText = userId != 0 && ExtraBadgesController.isClient(userId) ? getString(R.string.OEProfileClientMark) : null;
                         if (botAppRow >= 0 || bot_verification != null || bot_manager_id != null || !TextUtils.isEmpty(clientMarkText)) {
                             cell.setFixedSize(0);
                             final TLRPC.User user = getMessagesController().getUser(userId);
@@ -14881,7 +14881,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                                 }
                                 int from = sb.length();
                                 sb.append("x");
-                                sb.setSpan(new ColoredImageSpan(R.drawable.msg_exteraless_mark), from, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                                sb.setSpan(new ColoredImageSpan(R.drawable.msg_exteraless_seal), from, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                                 sb.append(" ");
                                 sb.append(clientMarkText);
                             }

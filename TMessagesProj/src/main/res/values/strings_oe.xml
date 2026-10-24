@@ -91,6 +91,7 @@
     <string name="OEPluginToggleLogShare">Share plugin toggle log</string>
     <string name="OEProfileIdDate">Registration and join date</string>
     <string name="OEProfileAccountCreated">**%1$s** joined Telegram %2$s</string>
+    <string name="OEProfileClientMark">This user uses exteraless</string>
     <string name="OEProfileChatStats">Chat history</string>
     <string name="OEProfileChatStatsCount">%1$s messages</string>
     <string name="OEProfileChatStatsEmpty">No messages yet</string>
