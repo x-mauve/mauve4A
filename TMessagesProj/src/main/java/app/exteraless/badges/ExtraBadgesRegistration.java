@@ -121,11 +121,11 @@ public final class ExtraBadgesRegistration {
                 callback.run(null);
                 return;
             }
-            TLRPC.TL_messages_requestSimpleWebView req = new TLRPC.TL_messages_requestSimpleWebView();
+            // Only the bot's Main Mini App carries the signed user data
+            TLRPC.TL_messages_requestMainWebView req = new TLRPC.TL_messages_requestMainWebView();
+            req.peer = controller.getInputPeer(peerId);
             req.bot = bot;
             req.platform = "android";
-            req.url = BuildConfig.EXTRABADGES_URL;
-            req.flags |= 8;
             ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
                 String initData = null;
                 if (response instanceof TLRPC.TL_webViewResultUrl) {
