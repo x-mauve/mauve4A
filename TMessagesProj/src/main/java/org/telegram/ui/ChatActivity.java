@@ -210,6 +210,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import app.exteraless.badges.ExtraBadgesController;
+import com.exteragram.messenger.api.dto.BadgeDTO;
 import org.telegram.messenger.NotificationsController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SecretChatHelper;
@@ -4792,6 +4793,7 @@ public class ChatActivity extends BaseFragment implements
             if (currentUser != null && ids.contains(currentUser.id)) {
                 updateTitle(true);
             }
+            updateVisibleRows(messageObject -> messageObject != null && ids.contains(messageObject.getFromChatId()));
         });
         app.exteraless.appearance.ChatHeaderUiHelper.setupGlassAvatarContainer(avatarContainer);
         avatarContainer.allowShorterStatus = true;
@@ -21095,6 +21097,35 @@ public class ChatActivity extends BaseFragment implements
         }
         setParentActivityTitle(avatarContainer.getTitleTextView().getText());
         updateTitleIcons();
+    }
+
+    private HintView2 extraBadgeHint;
+
+    private void showExtraBadgeHint(ChatMessageCell cell, BadgeDTO badge) {
+        if (getContext() == null || contentView == null || TextUtils.isEmpty(badge.getText())) {
+            return;
+        }
+        if (extraBadgeHint != null) {
+            extraBadgeHint.hide();
+        }
+        int[] cellLocation = new int[2];
+        int[] contentLocation = new int[2];
+        cell.getLocationInWindow(cellLocation);
+        contentView.getLocationInWindow(contentLocation);
+        float x = cellLocation[0] - contentLocation[0] + cell.getNameStatusX();
+        float y = cellLocation[1] - contentLocation[1] + cell.getNameStatusY() - dp(10);
+
+        HintView2 hint = new HintView2(getContext(), HintView2.DIRECTION_BOTTOM);
+        hint.setMultilineText(true);
+        hint.setMaxWidthPx(contentView.getWidth() - dp(32));
+        hint.setText(badge.getText());
+        hint.setJointPx(0, x);
+        hint.setTranslationY(y - dp(100));
+        hint.setDuration(4500);
+        contentView.addView(hint, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 100, Gravity.TOP | Gravity.FILL_HORIZONTAL));
+        hint.setOnHiddenListener(() -> AndroidUtilities.removeFromParent(hint));
+        hint.show();
+        extraBadgeHint = hint;
     }
 
     public void updateTopicTitleIcon() {
@@ -42993,6 +43024,10 @@ public class ChatActivity extends BaseFragment implements
         @Override
         public void didPressUserStatus(ChatMessageCell cell, TLRPC.User user, TLRPC.Document document, String giftSlug) {
             if (cell == null) {
+                return;
+            }
+            if (cell.currentNameExtraBadge != null) {
+                showExtraBadgeHint(cell, cell.currentNameExtraBadge);
                 return;
             }
             if (!TextUtils.isEmpty(giftSlug)) {

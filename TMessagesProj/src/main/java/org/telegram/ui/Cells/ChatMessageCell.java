@@ -127,6 +127,8 @@ import app.exteraless.chats.WideChannelPostLayout;
 import app.exteraless.feed.FeedMessageUtils;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
+import com.exteragram.messenger.api.dto.BadgeDTO;
+import app.exteraless.badges.ExtraBadgesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
@@ -1850,6 +1852,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private long currentNameBotVerificationId;
     private String nameStatusSlug;
     public AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable currentNameStatusDrawable;
+    public BadgeDTO currentNameExtraBadge;
     public AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable currentNameEmojiStatusDrawable;
 
     private TLRPC.User currentForwardUser;
@@ -20354,6 +20357,15 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     private Object getAuthorStatus() {
+        currentNameExtraBadge = null;
+        if (currentUser != null) {
+            // The extraBadges badge only takes the slot of users without Premium
+            BadgeDTO extraBadge = ExtraBadgesController.getChatBadge(currentUser, currentAccount);
+            if (extraBadge != null) {
+                currentNameExtraBadge = extraBadge;
+                return extraBadge.getDocumentId();
+            }
+        }
         if (!NaConfig.INSTANCE.getPremiumItemEmojiStatus().Bool()) {
             return null;
         }
