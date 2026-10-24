@@ -437,8 +437,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     private HintView fwdRestrictedHint;
     private HintView idDateHint;
-    private HintView badgeHint;
-    private int badgeHintOffset;
+    private HintView2 badgeHint;
 //    private ProfileMetaballView metaball;
     private FrameLayout avatarContainer;
     private FrameLayout avatarContainer2;
@@ -6148,16 +6147,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         idDateHint.setShowingDuration(4500);
         frameLayout.addView(idDateHint, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 12, 0, 12, 0));
 
-        badgeHint = new HintView(getParentActivity(), 8, false) {
-            @Override
-            protected int offsetCx() {
-                return badgeHintOffset;
-            }
-        };
-        badgeHint.setAlpha(0);
-        badgeHint.setShowingDuration(4500);
-        frameLayout.addView(badgeHint, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 12, 0, 12, 0));
-
         ViewGroup decorView;
         decorView = (ViewGroup) getParentActivity().getWindow().getDecorView();
         pinchToZoomHelper = new PinchToZoomHelper(decorView, frameLayout) {
@@ -11733,17 +11722,38 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     }
 
     private void showBadgeHint(int a, BadgeDTO badge) {
-        if (badgeHint == null || badgeDrawable[a] == null || TextUtils.isEmpty(badge.getText())) {
+        if (!(fragmentView instanceof FrameLayout) || badgeDrawable[a] == null || TextUtils.isEmpty(badge.getText())) {
             return;
         }
-        if (badgeHint.getTag() != null) {
+        if (badgeHint != null && badgeHint.shown()) {
             badgeHint.hide();
             return;
         }
+        FrameLayout container = (FrameLayout) fragmentView;
         SimpleTextView view = nameTextView[a];
-        badgeHintOffset = (int) ((badgeDrawable[a].getBounds().centerX() - view.getMeasuredWidth() / 2f) * view.getScaleX());
-        badgeHint.setText(badge.getText());
-        badgeHint.showForView(view, true);
+        // The badge is drawn inside the name view, which may be scaled, so map its bounds by hand
+        int[] viewLocation = new int[2];
+        int[] containerLocation = new int[2];
+        view.getLocationInWindow(viewLocation);
+        container.getLocationInWindow(containerLocation);
+        Rect bounds = badgeDrawable[a].getBounds();
+        float x = viewLocation[0] - containerLocation[0] + bounds.centerX() * view.getScaleX();
+        float y = viewLocation[1] - containerLocation[1] + bounds.top * view.getScaleY();
+
+        if (badgeHint != null) {
+            AndroidUtilities.removeFromParent(badgeHint);
+        }
+        HintView2 hint = new HintView2(getContext(), HintView2.DIRECTION_BOTTOM);
+        hint.setMultilineText(true);
+        hint.setMaxWidthPx(container.getWidth() - dp(32));
+        hint.setText(badge.getText());
+        hint.setJointPx(0, x);
+        hint.setTranslationY(y - dp(100) - dp(2));
+        hint.setDuration(4500);
+        container.addView(hint, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 100, Gravity.TOP | Gravity.FILL_HORIZONTAL));
+        hint.setOnHiddenListener(() -> AndroidUtilities.removeFromParent(hint));
+        hint.show();
+        badgeHint = hint;
     }
 
     private Drawable getBadgeDrawable(BadgeDTO badge, boolean animated, int a) {
