@@ -23,6 +23,9 @@
     <string name="OEGeneralFormatTimeWithSeconds">Format Time with Seconds</string>
     <string name="OEGeneralFormatTimeWithSecondsValue">12:34 → 12:34:56</string>
     <string name="OEGeneralRelativeLastSeen">Relative Last Seen</string>
+    <string name="OEGeneralShowClientMark">Show that I use exteraless</string>
+    <string name="OEGeneralShowClientMarkInfo">Others with exteraless see a mark in your profile. The badge server learns which profiles and chats you open.</string>
+    <string name="OEGeneralShowExtraBadges">Show extraBadges badges</string>
     <string name="OEGeneralInAppVibration">In-App Vibration</string>
     <string name="OEGeneralFilterZalgo">Filter \"Zalgo\"</string>
     <string name="OEGeneralFilterZalgoInfo">Removes stacked combining marks that break text layout. Example: %1$s</string>

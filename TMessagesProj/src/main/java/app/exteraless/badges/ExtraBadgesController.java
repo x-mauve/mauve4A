@@ -132,6 +132,12 @@ public final class ExtraBadgesController {
         return prefs().getString(KEY_MARK_TEXT, null);
     }
 
+    /** Forgets every loaded badge and mark, e.g. after badges were turned off. */
+    public static void clear() {
+        entries.clear();
+        BadgesController.INSTANCE.getApiBadgeSource().clear();
+    }
+
     /** Drops cached data for the user, e.g. after the own mark was toggled. */
     public static void invalidate(long userId) {
         entries.remove(userId);

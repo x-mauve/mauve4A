@@ -20,6 +20,9 @@
     <string name="OEGeneralFormatTimeWithSeconds">Показывать секунды</string>
     <string name="OEGeneralFormatTimeWithSecondsValue">12:34 → 12:34:56</string>
     <string name="OEGeneralRelativeLastSeen">Относительное время в сети</string>
+    <string name="OEGeneralShowClientMark">Показывать, что я пользуюсь exteraless</string>
+    <string name="OEGeneralShowClientMarkInfo">Другие пользователи exteraless увидят метку в вашем профиле. Сервер бейджей узнаёт, чьи профили и чаты вы открываете.</string>
+    <string name="OEGeneralShowExtraBadges">Показывать бейджи extraBadges</string>
     <string name="OEGeneralInAppVibration">Вибрация в приложении</string>
     <string name="OEGeneralFilterZalgo">Фильтровать «Zalgo»</string>
     <string name="OEGeneralFilterZalgoInfo">Убирает комбинируемые символы, ломающие вёрстку текста: Z̷͍͌ā̸̜l̸̞̂g̷͍̝o̶̩̓ превращается в Zalgo.</string>

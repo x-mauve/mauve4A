@@ -1,5 +1,8 @@
 package app.exteraless.settings;
 
+import org.telegram.messenger.BuildConfig;
+import app.exteraless.badges.ExtraBadgesController;
+import app.exteraless.badges.ExtraBadgesRegistration;
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
@@ -126,6 +129,8 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private int profileHeaderRow;
     private int relativeLastSeenRow;
     private int hidePhoneRow;
+    private int showClientMarkRow;
+    private int showExtraBadgesRow;
     private int showIdAndDcRow;
     private int lastfmRow;
     private int profileDividerRow;
@@ -203,6 +208,10 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         hidePhoneRow = addRow("hidePhone");
         showIdAndDcRow = addRow("showIdAndDc");
         lastfmRow = addRow("lastfm");
+        // The extraBadges switches make no sense in builds without a server
+        boolean extraBadges = !TextUtils.isEmpty(BuildConfig.EXTRABADGES_URL);
+        showClientMarkRow = extraBadges ? addRow("showClientMark") : -1;
+        showExtraBadgesRow = extraBadges ? addRow("showExtraBadges") : -1;
         profileDividerRow = addRow();
 
         archiveHeaderRow = addRow("archiveHeader");
@@ -371,6 +380,10 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             item = NekoConfig.uploadBoost;
         } else if (position == hidePhoneRow) {
             item = NekoConfig.hidePhone;
+        } else if (position == showClientMarkRow) {
+            item = OpenExteraConfig.showClientMark;
+        } else if (position == showExtraBadgesRow) {
+            item = OpenExteraConfig.showExtraBadges;
         } else if (position == hideArchiveRow) {
             item = NaConfig.INSTANCE.getHideArchive();
         } else if (position == archiveOnPullRow) {
@@ -423,6 +436,13 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             // пересборка ячейки оборвала бы анимацию переключателя, которая уже идёт.
             ((TextCheckCell) view).setValueText(
                     LocaleController.formatDateOnline(fiveMinutesAgo, new boolean[1], new boolean[1]));
+        }
+        if (position == showClientMarkRow) {
+            ExtraBadgesRegistration.onClientMarkChanged();
+        }
+        if (position == showExtraBadgesRow) {
+            ExtraBadgesController.clear();
+            rebuildAll();
         }
         if (position == hidePhoneRow) {
             getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
@@ -1195,6 +1215,12 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndValueAndCheck(getString(R.string.OEGeneralRelativeLastSeen),
                                 LocaleController.formatDateOnline(fiveMinutesAgo, new boolean[1], new boolean[1]),
                                 OpenExteraConfig.relativeLastSeen.Bool(), false, true);
+                    } else if (position == showClientMarkRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEGeneralShowClientMark),
+                                getString(R.string.OEGeneralShowClientMarkInfo), OpenExteraConfig.showClientMark.Bool(), true, true);
+                    } else if (position == showExtraBadgesRow) {
+                        cell.setTextAndCheck(getString(R.string.OEGeneralShowExtraBadges),
+                                OpenExteraConfig.showExtraBadges.Bool(), true);
                     } else if (position == hidePhoneRow) {
                         cell.setTextAndCheck(getString(R.string.OEGeneralHidePhone),
                                 NekoConfig.hidePhone.Bool(), true);
