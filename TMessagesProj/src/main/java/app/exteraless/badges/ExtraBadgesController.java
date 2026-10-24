@@ -13,8 +13,12 @@ import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildConfig;
+import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.UserObject;
+import org.telegram.tgnet.TLRPC;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -93,6 +97,21 @@ public final class ExtraBadgesController {
             flushScheduled = true;
         }
         AndroidUtilities.runOnUIThread(ExtraBadgesController::flush, BATCH_DELAY);
+    }
+
+    /**
+     * Returns the badge to draw next to a name outside the profile, or null.
+     * There the badge takes the emoji status slot, so it is shown only when the
+     * user has neither verification nor Premium.
+     */
+    public static BadgeDTO getChatBadge(TLRPC.User user, int account) {
+        if (user == null || !isEnabled() || user.verified || user.scam || user.fake || UserObject.isUserSelf(user)
+                || DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0
+                || MessagesController.getInstance(account).isPremiumUser(user)) {
+            return null;
+        }
+        request(user.id);
+        return BadgesController.INSTANCE.getApiBadgeSource().getBadge(user.id, true);
     }
 
     public static boolean isClient(long userId) {

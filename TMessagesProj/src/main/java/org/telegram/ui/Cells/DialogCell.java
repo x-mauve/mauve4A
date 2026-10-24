@@ -80,6 +80,8 @@ import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
+import com.exteragram.messenger.api.dto.BadgeDTO;
+import app.exteraless.badges.ExtraBadgesController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
@@ -658,6 +660,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     private boolean drawVerified;
     private boolean drawBotVerified;
     private boolean drawPremium;
+    private boolean drawExtraBadge;
     private final View emojiStatusView;
     private final View botVerificationView;
     private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable emojiStatus;
@@ -738,6 +741,12 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         };
         addView(emojiStatusView);
         emojiStatus = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(emojiStatusView, dp(22));
+        NotificationCenter.getGlobalInstance().listen(this, NotificationCenter.extraBadgesDidLoad, args -> {
+            ArrayList<Long> ids = (ArrayList<Long>) args[0];
+            if (user != null && ids.contains(user.id)) {
+                update(0);
+            }
+        });
         botVerificationView = new View(context) {
             @Override
             protected void onDraw(@NonNull Canvas canvas) {
@@ -1366,6 +1375,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         drawVerified = false;
         drawBotVerified = false;
         drawPremium = false;
+        drawExtraBadge = false;
         drawForwardIcon = false;
         drawGiftIcon = false;
         drawScam = 0;
@@ -1591,6 +1601,17 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                             } else {
                                 nameLayoutEllipsizeByGradient = true;
                                 emojiStatus.set(PremiumGradient.getInstance().premiumStarDrawableMini, false);
+                                emojiStatus.setParticles(false, false);
+                            }
+                        } else {
+                            // The extraBadges badge borrows the free emoji status slot
+                            BadgeDTO extraBadge = ExtraBadgesController.getChatBadge(user, currentAccount);
+                            if (extraBadge != null) {
+                                drawPremium = true;
+                                drawExtraBadge = true;
+                                nameLayoutEllipsizeByGradient = true;
+                                emojiStatus.center = LocaleController.isRTL;
+                                emojiStatus.set(extraBadge.getDocumentId(), false);
                                 emojiStatus.setParticles(false, false);
                             }
                         }
@@ -3535,7 +3556,13 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 }
                 if ((mask & MessagesController.UPDATE_MASK_EMOJI_STATUS) != 0) {
                     long dialogBotVerificationIcon = 0;
-                    if (user != null) {
+                    if (user != null && drawExtraBadge) {
+                        user = MessagesController.getInstance(currentAccount).getUser(user.id);
+                        if (user != null && (DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0 || MessagesController.getInstance(currentAccount).isPremiumUser(user))) {
+                            // The user got Premium, so the badge gives the slot back on the next rebuild
+                            continueUpdate = true;
+                        }
+                    } else if (user != null) {
                         user = MessagesController.getInstance(currentAccount).getUser(user.id);
                         if (user != null && DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0) {
                             nameLayoutEllipsizeByGradient = true;
