@@ -14802,7 +14802,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         TLObject obj = getMessagesController().getUserOrChat(did);
                         TL_bots.BotVerification bot_verification = userInfo != null ? userInfo.bot_verification : chatInfo != null ? chatInfo.bot_verification : null;
                         Long bot_manager_id = userInfo != null && TLObject.hasFlag(userInfo.flags2, TLObject.FLAG_25) ? userInfo.bot_manager_id : null;
-                        if (botAppRow >= 0 || bot_verification != null || bot_manager_id != null) {
+                        final String clientMarkText = userId != 0 && ExtraBadgesController.isClient(userId) ? ExtraBadgesController.getClientMarkText() : null;
+                        if (botAppRow >= 0 || bot_verification != null || bot_manager_id != null || !TextUtils.isEmpty(clientMarkText)) {
                             cell.setFixedSize(0);
                             final TLRPC.User user = getMessagesController().getUser(userId);
                             final boolean botOwner = user != null && user.bot && user.bot_can_edit;
@@ -14860,6 +14861,20 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                                         () -> presentFragment(ProfileActivity.of(bot_manager_id))
                                     ));
                                 }
+                            }
+
+                            // The client mark looks like bot verification but has a line of its own
+                            if (!TextUtils.isEmpty(clientMarkText)) {
+                                if (sb.length() > 0) {
+                                    sb.append("\n\n");
+                                }
+                                long markEmojiId = ExtraBadgesController.getClientMarkEmojiId();
+                                if (markEmojiId != 0) {
+                                    sb.append("x");
+                                    sb.setSpan(new AnimatedEmojiSpan(markEmojiId, cell.getTextView().getPaint().getFontMetricsInt()), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                                    sb.append(" ");
+                                }
+                                sb.append(clientMarkText);
                             }
 
                             cell.setLinkTextRippleColor(Theme.multAlpha(getThemedColor(Theme.key_windowBackgroundWhiteGrayText4), 0.2f));
