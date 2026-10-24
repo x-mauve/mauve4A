@@ -14879,12 +14879,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                                 if (sb.length() > 0) {
                                     sb.append("\n\n");
                                 }
-                                long markEmojiId = ExtraBadgesController.getClientMarkEmojiId();
-                                if (markEmojiId != 0) {
-                                    sb.append("x");
-                                    sb.setSpan(new AnimatedEmojiSpan(markEmojiId, cell.getTextView().getPaint().getFontMetricsInt()), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                                    sb.append(" ");
-                                }
+                                int from = sb.length();
+                                sb.append("x");
+                                sb.setSpan(new ColoredImageSpan(R.drawable.msg_exteraless_mark), from, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                                sb.append(" ");
                                 sb.append(clientMarkText);
                             }
 
