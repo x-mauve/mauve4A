@@ -721,6 +721,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private int channelInfoRow;
     private int usernameRow;
     private int idDcRow;
+    private int chatStatsRow;
+    private int chatStatsCount = -1;
+    private int chatStatsFirstId;
+    private int chatStatsFirstDate;
+    private boolean chatStatsLoading;
     private int restrictionReasonRow;
     private int notificationsDividerRow;
     private int notificationsRow;
@@ -4928,6 +4933,14 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 if (userInfo == null) return;
                 Bundle args = new Bundle();
                 args.putLong("chat_id", userInfo.personal_channel_id);
+                presentFragment(new ChatActivity(args));
+            } else if (position == chatStatsRow) {
+                if (chatStatsFirstId == 0) {
+                    return;
+                }
+                Bundle args = new Bundle();
+                args.putLong("user_id", userId);
+                args.putInt("message_id", chatStatsFirstId);
                 presentFragment(new ChatActivity(args));
             } else if (position == birthdayRow) {
                 if (birthdayEffect != null && birthdayEffect.start()) {
@@ -10871,6 +10884,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         birthdayRow = -1;
         setUsernameRow = -1;
         idDcRow = -1;
+        chatStatsRow = -1;
         bioRow = -1;
         channelRow = -1;
         channelDividerRow = -1;
@@ -11173,6 +11187,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
                 if (NaConfig.INSTANCE.getIdDcType().Int() != 0) {
                     idDcRow = rowCount++;
+                }
+                if (user != null && !UserObject.isUserSelf(user) && !UserObject.isDeleted(user)) {
+                    chatStatsRow = rowCount++;
                 }
                 if (userInfo != null) {
                     if (userInfo.birthday != null) {
@@ -14291,6 +14308,20 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         int dc = getDc();
                         boolean isUserSelf = userId == UserConfig.getInstance(currentAccount).getClientUserId();
                         detailCell.setTextAndValue(id + "", dc != 0 ? String.format(Locale.US, "DC%d %s, %s", dc, getDCName(dc), getDCLocation(dc)) : "DC " + getString(R.string.NumberUnknown), isUserSelf);
+                    } else if (position == chatStatsRow) {
+                        loadChatStats();
+                        String text;
+                        if (chatStatsCount < 0) {
+                            text = getString(R.string.Loading);
+                        } else if (chatStatsCount == 0) {
+                            text = getString(R.string.OEProfileChatStatsEmpty);
+                        } else {
+                            text = LocaleController.formatString(R.string.OEProfileChatStatsCount, LocaleController.formatNumber(chatStatsCount, ' '));
+                        }
+                        String value = chatStatsFirstDate != 0
+                                ? LocaleController.formatString(R.string.OEProfileChatStatsFirst, formatIdDate(chatStatsFirstDate))
+                                : getString(R.string.OEProfileChatStats);
+                        detailCell.setTextAndValue(text, value, false);
                     } else if (position == restrictionReasonRow) {
                         ArrayList<TLRPC.RestrictionReason> reasons = new ArrayList<>();
                         if (userId != 0) {
@@ -15044,7 +15075,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         position == clearLogsRow || position == switchBackendRow || position == setAvatarRow ||
                         position == addToGroupButtonRow || position == premiumRow || position == premiumGiftingRow ||
                         position == businessRow || position == liteModeRow || position == birthdayRow || position == channelRow ||
-                        position == starsRow || position == tonRow || position == linkedCommunityRow || position == idDcRow || position == nekoRow;
+                        position == starsRow || position == tonRow || position == linkedCommunityRow || position == idDcRow || position == chatStatsRow || position == nekoRow;
             }
             if (holder.itemView instanceof UserCell) {
                 UserCell userCell = (UserCell) holder.itemView;
@@ -15072,7 +15103,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (position == infoHeaderRow || position == membersHeaderRow || position == settingsSectionRow2 ||
                     position == numberSectionRow || position == helpHeaderRow || position == debugHeaderRow || position == botPermissionsHeader) {
                 return VIEW_TYPE_HEADER;
-            } else if (position == phoneRow || position == locationRow || position == numberRow || position == birthdayRow || position == restrictionReasonRow || position == idDcRow) {
+            } else if (position == phoneRow || position == locationRow || position == numberRow || position == birthdayRow || position == restrictionReasonRow || position == idDcRow || position == chatStatsRow) {
                 return VIEW_TYPE_TEXT_DETAIL;
             } else if (position == usernameRow || position == setUsernameRow) {
                 return VIEW_TYPE_TEXT_DETAIL_MULTILINE;
@@ -16467,6 +16498,54 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
+    private void loadChatStats() {
+        if (chatStatsLoading || chatStatsCount >= 0 || userId == 0) {
+            return;
+        }
+        chatStatsLoading = true;
+        TLRPC.TL_messages_getHistory countReq = new TLRPC.TL_messages_getHistory();
+        countReq.peer = getMessagesController().getInputPeer(userId);
+        countReq.limit = 1;
+        getConnectionsManager().sendRequest(countReq, (countRes, countErr) -> {
+            if (!(countRes instanceof TLRPC.messages_Messages)) {
+                AndroidUtilities.runOnUIThread(() -> chatStatsLoading = false);
+                return;
+            }
+            TLRPC.messages_Messages counted = (TLRPC.messages_Messages) countRes;
+            // A full result means the whole history fit into the response
+            int count = counted instanceof TLRPC.TL_messages_messages ? counted.messages.size() : counted.count;
+            if (count == 0) {
+                AndroidUtilities.runOnUIThread(() -> applyChatStats(0, 0, 0));
+                return;
+            }
+            // Offsetting past the oldest id returns the very first message of the chat
+            TLRPC.TL_messages_getHistory firstReq = new TLRPC.TL_messages_getHistory();
+            firstReq.peer = countReq.peer;
+            firstReq.offset_id = 1;
+            firstReq.add_offset = -1;
+            firstReq.limit = 1;
+            getConnectionsManager().sendRequest(firstReq, (firstRes, firstErr) -> {
+                TLRPC.Message first = null;
+                if (firstRes instanceof TLRPC.messages_Messages && !((TLRPC.messages_Messages) firstRes).messages.isEmpty()) {
+                    first = ((TLRPC.messages_Messages) firstRes).messages.get(0);
+                }
+                final int firstId = first != null ? first.id : 0;
+                final int firstDate = first != null ? first.date : 0;
+                AndroidUtilities.runOnUIThread(() -> applyChatStats(count, firstId, firstDate));
+            });
+        });
+    }
+
+    private void applyChatStats(int count, int firstId, int firstDate) {
+        chatStatsLoading = false;
+        chatStatsCount = count;
+        chatStatsFirstId = firstId;
+        chatStatsFirstDate = firstDate;
+        if (listAdapter != null && chatStatsRow >= 0) {
+            listAdapter.notifyItemChanged(chatStatsRow);
+        }
+    }
+
     private String formatIdDate(int date) {
         final long ms = date * 1000L;
         return LocaleController.formatString(R.string.formatDateAtTime, LocaleController.getInstance().getFormatterYear().format(ms), LocaleController.getInstance().getFormatterDay().format(ms));
@@ -16616,6 +16695,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             put(++pointer, numberRow, sparseIntArray);
             put(++pointer, setUsernameRow, sparseIntArray);
             put(++pointer, idDcRow, sparseIntArray);
+            put(++pointer, chatStatsRow, sparseIntArray);
             put(++pointer, bioRow, sparseIntArray);
             put(++pointer, phoneSuggestionRow, sparseIntArray);
             put(++pointer, phoneSuggestionSectionRow, sparseIntArray);

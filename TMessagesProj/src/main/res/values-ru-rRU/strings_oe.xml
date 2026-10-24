@@ -62,6 +62,10 @@
     <string name="OEPluginToggleLogShare">Отправить журнал включения плагинов</string>
     <string name="OEProfileIdDate">Дата регистрации и вступления</string>
     <string name="OEProfileAccountCreated">Аккаунт **%1$s** создан %2$s</string>
+    <string name="OEProfileChatStats">История переписки</string>
+    <string name="OEProfileChatStatsCount">Сообщений: %1$s</string>
+    <string name="OEProfileChatStatsEmpty">Сообщений пока нет</string>
+    <string name="OEProfileChatStatsFirst">Первое сообщение %1$s</string>
     <string name="OEProfileJoinedChat">Вы вступили в **%1$s** %2$s</string>
     <string name="OEProfileJoinedChannel">Вы подписались на **%1$s** %2$s</string>
     <string name="OEProfileChatCreated">**%1$s** создан %2$s</string>
