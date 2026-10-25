@@ -1,20 +1,20 @@
-# Участие в разработке
+# Contributing
 
-## Ветки и ремоуты
+## Branches and remotes
 
-* `master` — основная ветка mauve.
-* `origin` — этот репозиторий: `git@github.com:x-mauve/mauve4A.git`.
-* `upstream` — исходный проект: `git@github.com:exteraless/exteraless`, ветка `main`.
+* `master` is the main mauve branch.
+* `origin` is this repository: `git@github.com:x-mauve/mauve4A.git`.
+* `upstream` is the original project: `git@github.com:exteraless/exteraless`, branch `main`.
 
-После клонирования добавьте апстрим:
+After cloning, add the upstream remote:
 
 ```bash
 git remote add upstream git@github.com:exteraless/exteraless
 ```
 
-## Синхронизация с апстримом
+## Syncing with upstream
 
-1. Начните с чистого рабочего дерева и свежего `master`:
+1. Start with a clean working tree and an up-to-date `master`:
 
     ```bash
     git switch master
@@ -22,48 +22,48 @@ git remote add upstream git@github.com:exteraless/exteraless
     git fetch upstream
     ```
 
-2. Посмотрите, что пришло:
+2. See what's new:
 
     ```bash
     git log --oneline master..upstream/main
     ```
 
-3. Слейте изменения в отдельной ветке:
+3. Merge the changes on a separate branch:
 
     ```bash
     git switch -c sync/upstream-$(date +%F)
     git merge upstream/main
     ```
 
-    Используйте merge, а не rebase: история `master` уже опубликована, и merge
-    сохраняет её без переписывания.
+    Use merge, not rebase: the `master` history is already published, and a
+    merge keeps it intact without rewriting.
 
-4. Разрешите конфликты. Чаще всего они возникают там, где mauve отличается от
-   апстрима, и в этих местах нужно оставить версию mauve:
+4. Resolve conflicts. They usually show up where mauve differs from upstream,
+   and in those places you should keep the mauve version:
 
-    * имя пакета `org.xchunk.mauve` в `gradle.properties`, `AndroidManifest.xml`,
-      `res/xml/*.xml` и `google-services.json`;
-    * название `mauve` в строковых ресурсах `res/values*/strings*.xml`;
-    * канал `@mauveApp`, ссылки на репозиторий и `REPO` в `GitHubUpdater`;
-    * адрес и бот сервера бейджей в `TMessagesProj/build.gradle`;
-    * иконки в `res/drawable/exteraless_icon*.xml`.
+    * the `org.xchunk.mauve` package name in `gradle.properties`, `AndroidManifest.xml`,
+      `res/xml/*.xml`, and `google-services.json`;
+    * the `mauve` name in the string resources in `res/values*/strings*.xml`;
+    * the `@mauveApp` channel, the repository links, and `REPO` in `GitHubUpdater`;
+    * the badge server address and bot in `TMessagesProj/build.gradle`;
+    * the icons in `res/drawable/exteraless_icon*.xml`.
 
-    Новые строки, в которых апстрим пишет `exteraless`, переименуйте в `mauve`.
-    Найти их можно так:
+    Rename any new strings where upstream uses `exteraless` to `mauve`. You can
+    find them like this:
 
     ```bash
     grep -rn ">[^<]*exteraless" TMessagesProj/src/main/res/values*/strings*.xml
     grep -rn "com\.exteraless\.app\|exteraless/exteraless" TMessagesProj gradle.properties
     ```
 
-5. Обновите подмодули и проверьте сборку:
+5. Update the submodules and check that the build works:
 
     ```bash
     git submodule update --init --recursive --depth=1
     ./gradlew :TMessagesProj:assembleDebug
     ```
 
-6. Влейте ветку в `master` и отправьте:
+6. Merge the branch into `master` and push:
 
     ```bash
     git switch master
@@ -72,8 +72,8 @@ git remote add upstream git@github.com:exteraless/exteraless
     git branch -d sync/upstream-$(date +%F)
     ```
 
-## Коммиты
+## Commits
 
-* Один коммит — одно логическое изменение.
-* Сообщение коммита и комментарии в коде пишите на английском (американский вариант).
-* Не коммитьте `local.properties` и ключи подписи.
+* One commit, one logical change.
+* Write commit messages and code comments in American English.
+* Don't commit `local.properties` or signing keys.
