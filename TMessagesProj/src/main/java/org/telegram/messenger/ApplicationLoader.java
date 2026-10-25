@@ -418,7 +418,7 @@ public class ApplicationLoader extends Application implements CameraXConfig.Prov
 
         applicationHandler = new Handler(applicationContext.getMainLooper());
 
-        org.osmdroid.config.Configuration.getInstance().setUserAgentValue("exteraless/" + BuildConfig.VERSION_NAME + " (+https://github.com/x-chunk/mauve)");
+        org.osmdroid.config.Configuration.getInstance().setUserAgentValue("exteraless/" + BuildConfig.VERSION_NAME + " (+https://github.com/x-mauve/mauve4A)");
         final File osmdroidBasePath = new File(ApplicationLoader.applicationContext.getCacheDir(), "osmdroid");
         org.osmdroid.config.Configuration.getInstance().setOsmdroidBasePath(osmdroidBasePath);
         org.osmdroid.config.Configuration.getInstance().setOsmdroidTileCache(new File(osmdroidBasePath, "tiles"));

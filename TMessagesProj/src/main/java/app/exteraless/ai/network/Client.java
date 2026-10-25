@@ -348,7 +348,7 @@ public class Client {
                 .url(url)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", "Bearer " + service.getKey())
-                .addHeader("HTTP-Referer", "https://github.com/x-chunk/mauve")
+                .addHeader("HTTP-Referer", "https://github.com/x-mauve/mauve4A")
                 .addHeader("X-Title", "exteraless")
                 .post(RequestBody.create(body.toString(), JSON))
                 .build();

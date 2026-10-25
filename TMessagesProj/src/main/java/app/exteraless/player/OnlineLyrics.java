@@ -420,7 +420,7 @@ public final class OnlineLyrics {
         try {
             connection.setConnectTimeout(10_000);
             connection.setReadTimeout(15_000);
-            connection.setRequestProperty("User-Agent", "exteraless/" + BuildVars.BUILD_VERSION_STRING + " (https://github.com/x-chunk/mauve)");
+            connection.setRequestProperty("User-Agent", "exteraless/" + BuildVars.BUILD_VERSION_STRING + " (https://github.com/x-mauve/mauve4A)");
             connection.setRequestProperty("Accept", "application/json");
             int code = connection.getResponseCode();
             if (code == 404) {
