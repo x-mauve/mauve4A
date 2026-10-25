@@ -23,8 +23,8 @@
     <string name="OEGeneralFormatTimeWithSeconds">Format Time with Seconds</string>
     <string name="OEGeneralFormatTimeWithSecondsValue">12:34 → 12:34:56</string>
     <string name="OEGeneralRelativeLastSeen">Relative Last Seen</string>
-    <string name="OEGeneralShowClientMark">Show that I use exteraless</string>
-    <string name="OEGeneralShowClientMarkInfo">Others with exteraless see a mark in your profile. The badge server learns which profiles and chats you open.</string>
+    <string name="OEGeneralShowClientMark">Show that I use mauve</string>
+    <string name="OEGeneralShowClientMarkInfo">Others with mauve see a mark in your profile. The badge server learns which profiles and chats you open.</string>
     <string name="OEGeneralShowExtraBadges">Show extraBadges badges</string>
     <string name="OEGeneralInAppVibration">In-App Vibration</string>
     <string name="OEGeneralFilterZalgo">Filter \"Zalgo\"</string>
@@ -74,7 +74,7 @@
     <string name="OEGeneralImportEtgDone">Settings imported: %1$d</string>
     <string name="OEGeneralResetSettings">Reset Settings</string>
     <string name="OEGeneralResetSettingsInfo">All settings will be reset to their default values, and the app will restart.</string>
-    <string name="OEGeneralResetSettingsDone">exteraless preferences have been reset.</string>
+    <string name="OEGeneralResetSettingsDone">mauve preferences have been reset.</string>
     <string name="OEGeneralDeleteAccount">Delete Account</string>
     <string name="DeepLFormalityDefault">Tone: as it comes</string>
     <string name="DeepLFormalityInformal">Tone: informal</string>
@@ -116,7 +116,7 @@
     <string name="OEGeneralMapProvider">Map provider</string>
     <string name="OEGeneralMapPreview">Location previews</string>
     <string name="OEGeneralMapDriftingFix">Fix map drifting</string>
-    <string name="OECrashTitle">exteraless crashed</string>
+    <string name="OECrashTitle">mauve crashed</string>
     <string name="OEGeneralNetworkHeader">Network</string>
     <string name="OEGeneralDnsOverHttps" translatable="false">DNS over HTTPS</string>
     <string name="OEPrivacyFalseBottom">False Bottom</string>
@@ -132,7 +132,7 @@
     <string name="CloudConfigIncludeApiKeysDesc">API keys of AI and translation services are uploaded to the cloud too.</string>
     <string name="OECloudTitle">Cloud</string>
     <string name="OECloudHeroTitle">Settings in the cloud</string>
-    <string name="OECloudHeroText">Keep your exteraless settings in Telegram and restore them on any device signed in to this account.</string>
+    <string name="OECloudHeroText">Keep your mauve settings in Telegram and restore them on any device signed in to this account.</string>
     <string name="OECloudStatus">Status</string>
     <string name="OECloudLocal">This device</string>
     <string name="OECloudRemote">Cloud</string>
@@ -194,7 +194,7 @@
     <string name="OEAyuSaveInArchivedInfo">Deleted and edited messages from chats in the archive are saved too.</string>
     <string name="OEAyuDatabaseExport">Export database</string>
     <string name="OEAyuDatabaseImport">Import database</string>
-    <string name="OEAyuDatabaseImportInfo">Deleted and edited messages from this file will be added to the ones already saved. Exports from exteraless and AyuGram are supported. Media from another app may be unavailable.</string>
+    <string name="OEAyuDatabaseImportInfo">Deleted and edited messages from this file will be added to the ones already saved. Exports from mauve and AyuGram are supported. Media from another app may be unavailable.</string>
     <string name="OEAyuDatabaseImportDone">Messages added: %1$d</string>
     <string name="OEAyuDatabaseImportFailed">Couldn\'t import this file</string>
     <string name="OEAyuRegexReversed">Reversed</string>

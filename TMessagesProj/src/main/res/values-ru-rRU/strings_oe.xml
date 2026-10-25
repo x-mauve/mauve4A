@@ -24,13 +24,13 @@
     <string name="QrWifiUnknownNetwork">В коде нет имени сети</string>
     <string name="QrLoginHint">Этот код входит в аккаунт. Используйте Настройки → Устройства → Подключить устройство: тот экран проверяет код и защищает аккаунт.</string>
     <string name="QrLoginConfirm">Этот код входит в ваш аккаунт с нового устройства. Разрешайте, только если входите сами на своём устройстве.</string>
-    <string name="AppIconExteraless" translatable="false">exteraless</string>
+    <string name="AppIconExteraless" translatable="false">mauve</string>
     <string name="AppIconBlueprint" translatable="false">Blueprint</string>
     <string name="AppIconRed" translatable="false">Red</string>
     <string name="AppIconNya" translatable="false">Nya</string>
     <string name="AppIconAyu" translatable="false">Ayu</string>
     <string name="AppIconQuack" translatable="false">Quack</string>
-    <string name="OpenExteraPreferences">Настройки exteraless</string>
+    <string name="OpenExteraPreferences">Настройки mauve</string>
     <string name="OpenExteraDesignSection">Дизайн</string>
     <string name="OpenExteraDesigner">Иконки и дизайн</string>
     <string name="OpenExteraDesignStudio">Студия дизайна</string>
@@ -62,7 +62,7 @@
     <string name="OEPluginToggleLogShare">Отправить журнал включения плагинов</string>
     <string name="OEProfileIdDate">Дата регистрации и вступления</string>
     <string name="OEProfileAccountCreated">Аккаунт **%1$s** создан %2$s</string>
-    <string name="OEProfileClientMark">Пользователь использует exteraless</string>
+    <string name="OEProfileClientMark">Пользователь использует mauve</string>
     <string name="OEProfileChatStats">История переписки</string>
     <string name="OEProfileChatStatsCount">Сообщений: %1$s</string>
     <string name="OEProfileChatStatsEmpty">Сообщений пока нет</string>
