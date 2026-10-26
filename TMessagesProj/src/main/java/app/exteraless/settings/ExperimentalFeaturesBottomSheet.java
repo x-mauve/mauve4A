@@ -36,7 +36,6 @@ import java.util.Locale;
  */
 public class ExperimentalFeaturesBottomSheet extends BottomSheet {
 
-    // TODO: вернуть 30 секунд к релизу; 10 — пока тестируем окно.
     private static final int ALLOW_DELAY_SECONDS = 10;
     private final Runnable onAllow;
 
