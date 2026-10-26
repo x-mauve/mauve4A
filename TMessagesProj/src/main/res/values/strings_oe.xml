@@ -110,4 +110,13 @@
     <string name="ExtraBadgeSheetVisibleText">The badge is shown next to the name in the profile and is visible to every mauve user.</string>
     <string name="ExtraBadgeBulletinText">This is a unique badge given by the mauve team to people who help build the app.</string>
     <string name="ExtraBadgeLearnMore">Learn More</string>
+    <string name="ClientMarkSheetTitle">mauve User</string>
+    <string name="ClientMarkSheetSubtitle">This mark means the person uses mauve, an open-source Telegram client.</string>
+    <string name="ClientMarkSheetPluginsTitle">Safe Plugins</string>
+    <string name="ClientMarkSheetPluginsText">mauve runs Python plugins with a permission model, so every plugin only gets the access you allow.</string>
+    <string name="ClientMarkSheetCustomizeTitle">Deep Customization</string>
+    <string name="ClientMarkSheetCustomizeText">Themes, icons, fonts, and layouts can be tuned to your taste.</string>
+    <string name="ClientMarkSheetDownloadTitle">Free and Open</string>
+    <string name="ClientMarkSheetDownloadText">The app is free and its source code is public, so anyone can check it or join the development.</string>
+    <string name="ClientMarkBulletinText">The mark is shown automatically to people who use the mauve app.</string>
 </resources>
