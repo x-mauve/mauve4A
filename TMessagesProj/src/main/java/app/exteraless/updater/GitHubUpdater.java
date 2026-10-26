@@ -51,7 +51,9 @@ public final class GitHubUpdater {
     private static final String PREFS = "exteraless_updater";
     private static final String KEY_LAST_CHECK = "last_check";
     private static final String KEY_SKIPPED = "skipped_tag";
-    private static final Pattern VERSION = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)");
+    private static final Pattern VERSION = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)(?:-(preview|rc)\\.(\\d+))?");
+    // A preview comes before an rc, and both come before the final release
+    private static final int STAGE_PREVIEW = 0, STAGE_RC = 1, STAGE_FINAL = 2;
 
     private static volatile OkHttpClient client;
     private static volatile boolean checking;
@@ -259,7 +261,12 @@ public final class GitHubUpdater {
             }
             Matcher matcher = VERSION.matcher(source);
             if (matcher.find()) {
-                return new int[]{Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3))};
+                String stage = matcher.group(4);
+                return new int[]{
+                        Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3)),
+                        stage == null ? STAGE_FINAL : "rc".equals(stage) ? STAGE_RC : STAGE_PREVIEW,
+                        stage == null ? 0 : Integer.parseInt(matcher.group(5))
+                };
             }
         }
         return null;
@@ -267,11 +274,11 @@ public final class GitHubUpdater {
 
     private static Integer compareVersion(Release release) {
         int[] remote = version(release.tag, release.name, release.apkName);
-        int[] local = version(BuildVars.BUILD_VERSION_STRING);
+        int[] local = version(BuildVars.MAUVE_VERSION_STRING);
         if (remote == null || local == null) {
             return null;
         }
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < remote.length; i++) {
             if (remote[i] != local[i]) {
                 return Integer.compare(remote[i], local[i]);
             }
@@ -320,6 +327,9 @@ public final class GitHubUpdater {
         StringBuilder subtitle = new StringBuilder(TextUtils.isEmpty(release.name) ? release.tag : release.name);
         if (remote != null) {
             subtitle.append(" · ").append(remote[0]).append('.').append(remote[1]).append('.').append(remote[2]);
+            if (remote[3] != STAGE_FINAL) {
+                subtitle.append(remote[3] == STAGE_RC ? "-rc." : "-preview.").append(remote[4]);
+            }
         }
         if (!size.isEmpty()) {
             subtitle.append(" · ").append(size);
