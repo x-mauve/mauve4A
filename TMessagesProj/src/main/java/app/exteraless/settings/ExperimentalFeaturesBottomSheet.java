@@ -125,7 +125,9 @@ public class ExperimentalFeaturesBottomSheet extends BottomSheet {
         button.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
         button.setTypeface(org.telegram.messenger.AndroidUtilities.bold());
         if (filled) {
-            button.setTextColor(getThemedColor(Theme.key_buttonNeutralText));
+            // Текст на основной кнопке: штатное сочетание к featuredStickers_addButton —
+            // key_buttonNeutralText тёмный и на светлом фоне растворялся в фоне.
+            button.setTextColor(getThemedColor(Theme.key_featuredStickers_buttonText));
             button.setBackground(Theme.createSimpleSelectorRoundRectDrawable(dp(24), primary,
                     ColorUtils.blendARGB(primary, text, 0.16f)));
         } else {
