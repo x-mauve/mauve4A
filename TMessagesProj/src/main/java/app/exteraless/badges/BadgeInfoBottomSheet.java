@@ -42,16 +42,13 @@ public abstract class BadgeInfoBottomSheet extends BottomSheet {
         content.addView(header, LayoutHelper.createLinear(size, size, Gravity.CENTER_HORIZONTAL, 0, 24, 0, 0));
     }
 
-    // Same tinted circle as ExperimentalFeaturesBottomSheet, but in the theme accent
     protected void addIconHeader(int iconRes) {
         int accent = getThemedColor(Theme.key_windowBackgroundWhiteBlueText4);
-        FrameLayout circle = new FrameLayout(context);
-        circle.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(200), ColorUtils.setAlphaComponent(accent, 38)));
         ImageView icon = new ImageView(context);
         icon.setImageResource(iconRes);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         icon.setColorFilter(new PorterDuffColorFilter(accent, PorterDuff.Mode.SRC_IN));
-        circle.addView(icon, LayoutHelper.createFrame(42, 42, Gravity.CENTER));
-        addHeader(circle, 72);
+        addHeader(icon, 120);
     }
 
     protected void addTitle(int titleRes, int subtitleRes) {
