@@ -223,9 +223,13 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.mainUserInfoChanged);
             NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.reloadInterface);
         } else if (position == allowExperimentalFeaturesRow) {
-            boolean enabled = SharedSettings.experimentalSettingsAllowed.toggle();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(enabled);
+            // Включение идёт только через согласие: меняет флаг колбэк шита,
+            // и он же перерисовывает ячейку. Выключение — сразу.
+            if (!SharedSettings.experimentalSettingsAllowed.get()) {
+                showDialog(new ExperimentalFeaturesBottomSheet(this, this::updateExperimentalFeaturesCell));
+            } else {
+                SharedSettings.experimentalSettingsAllowed.set(false);
+                updateExperimentalFeaturesCell();
             }
         } else if (position == unlimitedPinnedDialogsRow) {
             toggleCheck(view, NekoConfig.unlimitedPinnedDialogs);
@@ -252,6 +256,17 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         boolean enabled = config.toggleConfigBool();
         if (view instanceof TextCheckCell) {
             ((TextCheckCell) view).setChecked(enabled);
+        }
+    }
+
+    private void updateExperimentalFeaturesCell() {
+        if (listView == null || allowExperimentalFeaturesRow < 0) {
+            return;
+        }
+        RecyclerView.ViewHolder holder = listView.findViewHolderForAdapterPosition(allowExperimentalFeaturesRow);
+        if (holder != null && holder.itemView instanceof TextCheckCell) {
+            ((TextCheckCell) holder.itemView).setChecked(
+                    SharedSettings.experimentalSettingsAllowed.get());
         }
     }
 

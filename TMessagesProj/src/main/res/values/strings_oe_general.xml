@@ -82,6 +82,16 @@
     <string name="OEGeneralNagramHeader">Extras</string>
     <string name="OEGeneralAllowExperimentalFeatures">Allow Experimental Features</string>
     <string name="OEGeneralAllowExperimentalFeaturesInfo">Unlocks experimental features, some of which may be unstable. A new “Experimental Features” item appears in mauve Preferences.</string>
+    <string name="OEExperimentalTitle">Experimental Features</string>
+    <string name="OEExperimentalText">You agree to use the app’s experimental features. Every experiment:</string>
+    <string name="OEExperimentalUnstable">Unstable work</string>
+    <string name="OEExperimentalUnstableInfo">Some features may be unfinished: crashes, broken interfaces or lost data.</string>
+    <string name="OEExperimentalChanges">Changes without warning</string>
+    <string name="OEExperimentalChangesInfo">Features can be reworked or removed in any update.</string>
+    <string name="OEExperimentalSelf">You are on your own</string>
+    <string name="OEExperimentalSelfInfo">Issues caused by experimental features may not be fixed.</string>
+    <string name="OEExperimentalWarning">An unstable feature may break your chats.</string>
+    <string name="OEExperimentalAllow">Allow</string>
     <string name="OEGeneralNagramSettings">NagramX settings</string>
     <string name="OEGeneralAyuMoments">AyuMoments</string>
     <string name="OEGeneralAyuMomentsInfo">Saving deleted and edited messages, ghost mode and regex filters. The features keep working while they are on, whether or not you open this screen.</string>
