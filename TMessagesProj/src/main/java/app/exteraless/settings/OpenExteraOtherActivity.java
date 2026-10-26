@@ -209,6 +209,15 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                     // ячейку, а флаг оставался выключенным и тумблер не жил.
                     SharedSettings.experimentalSettingsAllowed.set(true);
                     updateExperimentalFeaturesCell();
+                    // После включения показываем, что появилась новая секция
+                    // настроек, и дём кнопку прямого перехода к ней.
+                    BulletinFactory.of(OpenExteraOtherActivity.this).createSimpleBulletin(
+                            R.raw.chats_infotip,
+                            getString(R.string.OEExperimentalTitle),
+                            getString(R.string.OEExperimentalBulletinText),
+                            getString(R.string.OEExperimentalBulletinOpen),
+                            () -> presentFragment(new OpenExteraExperimentalActivity())
+                    ).show();
                 }));
             } else {
                 SharedSettings.experimentalSettingsAllowed.set(false);
