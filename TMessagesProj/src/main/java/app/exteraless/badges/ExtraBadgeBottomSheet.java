@@ -13,6 +13,8 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.core.graphics.ColorUtils;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -20,7 +22,6 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
 
 /**
  * Explains what the extraBadges badge next to a user's name means.
@@ -70,8 +71,16 @@ public class ExtraBadgeBottomSheet extends BottomSheet {
         content.addView(featureRow(context, R.drawable.msg_contacts,
                 R.string.ExtraBadgeSheetVisibleTitle, R.string.ExtraBadgeSheetVisibleText));
 
-        ButtonWithCounterView button = new ButtonWithCounterView(context, true, resourcesProvider);
-        button.setText(LocaleController.getString(R.string.Close), false);
+        // Same pill button as ExperimentalFeaturesBottomSheet
+        final int primary = getThemedColor(Theme.key_windowBackgroundWhiteBlueText4);
+        TextView button = new TextView(context);
+        button.setGravity(Gravity.CENTER);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        button.setTypeface(AndroidUtilities.bold());
+        button.setTextColor(getThemedColor(Theme.key_featuredStickers_buttonText));
+        button.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(24), primary,
+                ColorUtils.blendARGB(primary, getThemedColor(Theme.key_windowBackgroundWhiteBlackText), 0.16f)));
+        button.setText(LocaleController.getString(R.string.Close));
         button.setOnClickListener(v -> dismiss());
         content.addView(button, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 16, 16, 16, 16));
 
