@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Profile badges:** tapping the custom badge next to a name now shows a
+  bulletin with the badge description and a "Learn More" button that opens a
+  sheet explaining the unique mauve badge.
+
 ### Fixed
 
 - **Sticker Shape → Message:** read/delivery status ticks no longer shift left

@@ -277,6 +277,7 @@ import app.exteraless.components.ProfileMusicCard;
 import com.exteragram.messenger.api.dto.BadgeDTO;
 import com.exteragram.messenger.badges.BadgesController;
 
+import app.exteraless.badges.ExtraBadgeBulletin;
 import app.exteraless.badges.ExtraBadgesController;
 import app.exteraless.components.PairDrawable;
 import org.telegram.ui.Components.RLottieDrawable;
@@ -437,7 +438,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     private HintView fwdRestrictedHint;
     private HintView idDateHint;
-    private HintView2 badgeHint;
+    private Bulletin badgeBulletin;
 //    private ProfileMetaballView metaball;
     private FrameLayout avatarContainer;
     private FrameLayout avatarContainer2;
@@ -6099,9 +6100,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 if (idDateHint != null) {
                     idDateHint.hide();
                 }
-                if (badgeHint != null) {
-                    badgeHint.hide();
-                }
                 checkListViewScroll();
                 if (participantsMap != null && !usersEndReached && layoutManager.findLastVisibleItemPosition() > membersEndRow - 8) {
                     getChannelParticipants(false);
@@ -11721,39 +11719,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         return badge == null ? mark : new PairDrawable(mark, getBadgeDrawable(badge, animated, a), dp(4));
     }
 
-    private void showBadgeHint(int a, BadgeDTO badge) {
-        if (!(fragmentView instanceof FrameLayout) || badgeDrawable[a] == null || TextUtils.isEmpty(badge.getText())) {
-            return;
+    private void showBadgeBulletin(BadgeDTO badge) {
+        if (badgeBulletin != null && badgeBulletin.isShowing()) {
+            badgeBulletin.hide();
         }
-        if (badgeHint != null && badgeHint.shown()) {
-            badgeHint.hide();
-            return;
-        }
-        FrameLayout container = (FrameLayout) fragmentView;
-        SimpleTextView view = nameTextView[a];
-        // The badge is drawn inside the name view, which may be scaled, so map its bounds by hand
-        int[] viewLocation = new int[2];
-        int[] containerLocation = new int[2];
-        view.getLocationInWindow(viewLocation);
-        container.getLocationInWindow(containerLocation);
-        Rect bounds = badgeDrawable[a].getBounds();
-        float x = viewLocation[0] - containerLocation[0] + bounds.centerX() * view.getScaleX();
-        float y = viewLocation[1] - containerLocation[1] + bounds.top * view.getScaleY();
-
-        if (badgeHint != null) {
-            AndroidUtilities.removeFromParent(badgeHint);
-        }
-        HintView2 hint = new HintView2(getContext(), HintView2.DIRECTION_BOTTOM);
-        hint.setMultilineText(true);
-        hint.setMaxWidthPx(container.getWidth() - dp(32));
-        hint.setText(badge.getText());
-        hint.setJointPx(0, x);
-        hint.setTranslationY(y - dp(100) - dp(2));
-        hint.setDuration(4500);
-        container.addView(hint, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 100, Gravity.TOP | Gravity.FILL_HORIZONTAL));
-        hint.setOnHiddenListener(() -> AndroidUtilities.removeFromParent(hint));
-        hint.show();
-        badgeHint = hint;
+        badgeBulletin = ExtraBadgeBulletin.show(this, badge);
     }
 
     private Drawable getBadgeDrawable(BadgeDTO badge, boolean animated, int a) {
@@ -12090,8 +12060,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         nameTextViewRightDrawable2ContentDescription = null;
                     }
                     if (userBadge != null) {
-                        final int index = a;
-                        nameTextView[a].setRightDrawable2OnClick(v -> showBadgeHint(index, userBadge));
+                        nameTextView[a].setRightDrawable2OnClick(v -> showBadgeBulletin(userBadge));
                     }
                     Long selfEmojiDocId = (user != null && user.self) ? UserObject.getEmojiStatusDocumentId(user) : null;
                     if (user != null/* && !getMessagesController().premiumFeaturesBlocked()*/ && !MessagesController.isSupportUser(user) && (DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0 || (user.self && selfEmojiDocId != null && selfEmojiDocId != 0))) {
@@ -12127,8 +12096,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         nameTextView[a].setRightDrawable2(null);
                     }
                     if (userBadge != null) {
-                        final int index = a;
-                        nameTextView[a].setRightDrawable2OnClick(v -> showBadgeHint(index, userBadge));
+                        nameTextView[a].setRightDrawable2OnClick(v -> showBadgeBulletin(userBadge));
                     }
                     Long selfEmojiDocId2 = (user != null && user.self) ? UserObject.getEmojiStatusDocumentId(user) : null;
                     if (/*!getMessagesController().premiumFeaturesBlocked() && */user != null && !MessagesController.isSupportUser(user) && (DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0 || (user.self && selfEmojiDocId2 != null && selfEmojiDocId2 != 0))) {
