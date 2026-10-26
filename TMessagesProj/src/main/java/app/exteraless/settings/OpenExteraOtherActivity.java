@@ -542,8 +542,9 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                             cell.setTextAndValueAndCheck(getString(R.string.localPremium),
                                     getString(R.string.OELocalPremiumInfo), NekoConfig.localPremium.Bool(), true, true);
                         } else if (position == allowExperimentalFeaturesRow) {
-                            cell.setTextAndCheck(getString(R.string.OEGeneralAllowExperimentalFeatures),
-                                    SharedSettings.experimentalSettingsAllowed.get(), true);
+                            cell.setTextAndValueAndCheck(getString(R.string.OEGeneralAllowExperimentalFeatures),
+                                    getString(R.string.OEGeneralAllowExperimentalFeaturesInfo),
+                                    SharedSettings.experimentalSettingsAllowed.get(), true, true);
                         } else if (position == unlimitedPinnedDialogsRow) {
                             cell.setTextAndValueAndCheck(getString(R.string.UnlimitedPinnedDialogs),
                                     getString(R.string.UnlimitedPinnedDialogsAbout),
