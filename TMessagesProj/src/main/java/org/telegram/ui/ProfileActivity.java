@@ -11726,6 +11726,13 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         badgeBulletin = ExtraBadgeBulletin.show(this, badge);
     }
 
+    private void showClientMarkBulletin() {
+        if (badgeBulletin != null && badgeBulletin.isShowing()) {
+            badgeBulletin.hide();
+        }
+        badgeBulletin = ExtraBadgeBulletin.showClientMark(this);
+    }
+
     private Drawable getBadgeDrawable(BadgeDTO badge, boolean animated, int a) {
         if (badgeDrawable[a] == null) {
             badgeDrawable[a] = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView[a], AndroidUtilities.dp(24), a == 0 ? AnimatedEmojiDrawable.CACHE_TYPE_EMOJI_STATUS : AnimatedEmojiDrawable.CACHE_TYPE_KEYBOARD);
@@ -14852,6 +14859,17 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                                 sb.setSpan(new ColoredImageSpan(R.drawable.msg_exteraless_seal), from, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                                 sb.append(" ");
                                 sb.append(clientMarkText);
+                                // Keep the plain text look, the cell draws the ripple for the span
+                                sb.setSpan(new ClickableSpan() {
+                                    @Override
+                                    public void onClick(@NonNull View widget) {
+                                        showClientMarkBulletin();
+                                    }
+
+                                    @Override
+                                    public void updateDrawState(@NonNull TextPaint ds) {
+                                    }
+                                }, from, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                             }
 
                             cell.setLinkTextRippleColor(Theme.multAlpha(getThemedColor(Theme.key_windowBackgroundWhiteGrayText4), 0.2f));

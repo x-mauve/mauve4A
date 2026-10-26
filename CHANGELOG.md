@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Profile badges:** tapping the custom badge next to a name now shows a
   bulletin with the badge description and a "Learn More" button that opens a
   sheet explaining the unique mauve badge.
+- **Profile client mark:** the "This user uses mauve" line is now tappable and
+  shows a bulletin with a "Learn More" button that opens a sheet about mauve.
 
 ### Fixed
 
