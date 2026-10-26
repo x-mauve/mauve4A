@@ -6,7 +6,7 @@ import org.telegram.utils.camera.roundvideo.RoundVideoSession;
 public final class SharedSettings {
 
     public static final BooleanSetting experimentalSettingsAllowed =
-        BooleanSetting.of("experimental_settings_allowed", BuildVars.DEBUG_VERSION);
+        BooleanSetting.of("experimental_settings_allowed", false);
 
     public static final BooleanSetting roundVideoCamera2Enabled =
         BooleanSetting.of("round_video_camera2_enabled", BuildVars.DEBUG_VERSION);
