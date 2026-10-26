@@ -73,4 +73,14 @@
     <string name="OEProfileJoinDateUnknown">Дата вступления недоступна</string>
     <string name="AppIconsSelect">Выбрать</string>
     <string name="AppIconsKeep">Оставить эту</string>
+    <string name="ExtraBadgeSheetTitle">Уникальный бейдж mauve</string>
+    <string name="ExtraBadgeSheetSubtitle">Этот бейдж отмечает особую роль в проекте mauve. Его нельзя купить, его можно только получить.</string>
+    <string name="ExtraBadgeSheetTeamTitle">Команда разработчиков</string>
+    <string name="ExtraBadgeSheetTeamText">Бейдж выдается участникам команды mauve, которые создают и поддерживают приложение.</string>
+    <string name="ExtraBadgeSheetUniqueTitle">Единственный в своем роде</string>
+    <string name="ExtraBadgeSheetUniqueText">Каждый бейдж выдается вручную, поэтому он есть лишь у немногих в Telegram.</string>
+    <string name="ExtraBadgeSheetVisibleTitle">Виден другим</string>
+    <string name="ExtraBadgeSheetVisibleText">Бейдж отображается рядом с именем в профиле и виден всем пользователям mauve.</string>
+    <string name="ExtraBadgeBulletinText">Это уникальный бейдж, который команда mauve выдает тем, кто помогает создавать приложение.</string>
+    <string name="ExtraBadgeLearnMore">Подробнее</string>
 </resources>

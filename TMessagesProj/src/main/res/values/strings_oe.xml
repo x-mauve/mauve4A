@@ -100,4 +100,14 @@
     <string name="OEProfileJoinedChannel">You subscribed to **%1$s** on %2$s</string>
     <string name="OEProfileChatCreated">**%1$s** was created on %2$s</string>
     <string name="OEProfileJoinDateUnknown">Join date is unavailable</string>
+    <string name="ExtraBadgeSheetTitle">Unique mauve\'s Badge</string>
+    <string name="ExtraBadgeSheetSubtitle">This badge is a sign of a special role in the mauve project. You can\'t buy it, it can only be granted.</string>
+    <string name="ExtraBadgeSheetTeamTitle">Development Team</string>
+    <string name="ExtraBadgeSheetTeamText">The badge is given to people on the mauve development team who build and maintain the app.</string>
+    <string name="ExtraBadgeSheetUniqueTitle">One of a Kind</string>
+    <string name="ExtraBadgeSheetUniqueText">Every badge is assigned by hand, so only a few people across Telegram have one.</string>
+    <string name="ExtraBadgeSheetVisibleTitle">Visible to Others</string>
+    <string name="ExtraBadgeSheetVisibleText">The badge is shown next to the name in the profile and is visible to every mauve user.</string>
+    <string name="ExtraBadgeBulletinText">This is a unique badge given by the mauve team to people who help build the app.</string>
+    <string name="ExtraBadgeLearnMore">Learn More</string>
 </resources>
