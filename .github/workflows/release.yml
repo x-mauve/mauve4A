@@ -2,12 +2,8 @@ name: Release Build
 
 on:
   push:
-    branches:
-      - master
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
-      - '!.github/workflows/release.yml'
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       publish:
@@ -39,6 +35,14 @@ jobs:
         with:
           fetch-depth: 1
           submodules: recursive
+      - name: Check the tag matches the app version
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          VERSION=$(sed -n 's/^MAUVE_VERSION_NAME=//p' gradle.properties)
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME doesn't match MAUVE_VERSION_NAME=$VERSION"
+            exit 1
+          fi
       - name: Set up JDK
         uses: actions/setup-java@v5
         with:
@@ -102,8 +106,18 @@ jobs:
           name: Release
           path: |
             TMessagesProj/build/outputs/apk/release/*.apk
+      - name: Publish GitHub release
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Previews and release candidates go out as pre-releases
+          PRERELEASE=""
+          case "$GITHUB_REF_NAME" in *-*) PRERELEASE="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" TMessagesProj/build/outputs/apk/release/*.apk \
+            --verify-tag $PRERELEASE --title "mauve $GITHUB_REF_NAME" --generate-notes
       - name: Publish GitHub pre-release
-        if: ${{ github.ref == 'refs/heads/master' && (github.event_name != 'workflow_dispatch' || inputs.publish) && !contains(github.event.head_commit.message, '[skip publish]') }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -122,7 +136,7 @@ jobs:
               gh release delete "$old" --yes --cleanup-tag
             done
       - name: Send APK to Telegram
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish) && !contains(github.event.head_commit.message, '[skip publish]') }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_API_ID: ${{ secrets.TG_API_ID }}
