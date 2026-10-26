@@ -13,14 +13,18 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import android.view.View;
+
 import androidx.core.graphics.ColorUtils;
 
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
+
+import java.util.Locale;
 
 /**
  * Окно согласия на экспериментальные функции.
@@ -98,28 +102,71 @@ public class ExperimentalFeaturesBottomSheet extends BottomSheet {
 
         // Кнопки в порядке «безопасная» → «опасная»: Cancel сверху, Allow снизу
         // c отсчётом, как в окне согласия на неизвестные источники.
-        ButtonWithCounterView cancel = new ButtonWithCounterView(activity, true, resourcesProvider).setRound();
-        cancel.setText(getString(R.string.Cancel), false);
-        cancel.setOnClickListener(v -> dismiss());
-        content.addView(cancel, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 12, 0, 0));
+        content.addView(createButton(activity, getString(R.string.Cancel), true), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 12, 0, 0));
 
-        ButtonWithCounterView allow = new ButtonWithCounterView(activity, false, resourcesProvider).setRound();
-        allow.setText(getString(R.string.OEExperimentalAllow), false);
-        // setTimer держит кнопку некликабельной, пока идёт отсчёт, и показывает
-        // счётчик рядом с текстом («Allow 30 → 29 → …»).
-        allow.setTimer(ALLOW_DELAY_SECONDS, null);
+        content.addView(createAllowButton(activity), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 6, 0, 0));
+
+        ScrollView scroll = new ScrollView(activity);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.addView(content);
+        setCustomView(scroll);
+    }
+
+    /**
+     * Плоская кнопка окна согласия без ButtonWithCounterView: тот заточен под
+     * бусты сторис, и его таймер вне сторис не поднимал кнопку после отсчёта.
+     * Здесь отсчёт ведём сами: номер идёт в подпись, клики режет setEnabled.
+     */
+    private TextView createButton(Activity activity, CharSequence label, boolean filled) {
+        final int primary = getThemedColor(Theme.key_windowBackgroundWhiteBlueText4);
+        final int text = getThemedColor(Theme.key_windowBackgroundWhiteBlackText);
+        final int gray = getThemedColor(Theme.key_windowBackgroundWhiteGrayText);
+
+        TextView button = new TextView(activity);
+        button.setGravity(Gravity.CENTER);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        button.setTypeface(org.telegram.messenger.AndroidUtilities.bold());
+        if (filled) {
+            button.setTextColor(getThemedColor(Theme.key_buttonNeutralText));
+            button.setBackground(Theme.createSimpleSelectorRoundRectDrawable(dp(24), primary,
+                    ColorUtils.blendARGB(primary, text, 0.16f)));
+        } else {
+            button.setTextColor(gray);
+            button.setBackground(Theme.createSimpleSelectorRoundRectDrawable(dp(24),
+                    ColorUtils.setAlphaComponent(gray, 40),
+                    ColorUtils.setAlphaComponent(gray, 70)));
+        }
+        button.setText(label);
+        button.setOnClickListener(v -> dismiss());
+        return button;
+    }
+
+    private TextView createAllowButton(Activity activity) {
+        TextView allow = createButton(activity, getString(R.string.OEExperimentalAllow), false);
         allow.setOnClickListener(v -> {
             dismiss();
             if (onAllow != null) {
                 onAllow.run();
             }
         });
-        content.addView(allow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 6, 0, 0));
+        startAllowCountdown(allow, ALLOW_DELAY_SECONDS);
+        return allow;
+    }
 
-        ScrollView scroll = new ScrollView(activity);
-        scroll.setVerticalScrollBarEnabled(false);
-        scroll.addView(content);
-        setCustomView(scroll);
+    private void startAllowCountdown(TextView allow, int secondsLeft) {
+        // Некликабельная, пока идёт отсчёт: disabled View не получает тапы,
+        // поэтому setEnabled ровно то, чем должен быть «Allow 28» на фото.
+        allow.setEnabled(false);
+        allow.setText(String.format(Locale.US, "%s %d",
+                getString(R.string.OEExperimentalAllow), secondsLeft));
+        AndroidUtilities.runOnUIThread(() -> {
+            if (secondsLeft > 1) {
+                startAllowCountdown(allow, secondsLeft - 1);
+            } else {
+                allow.setText(getString(R.string.OEExperimentalAllow));
+                allow.setEnabled(true);
+            }
+        }, 1000);
     }
 
     private static LinearLayout createRow(Activity activity, int iconRes, CharSequence title, CharSequence description) {
