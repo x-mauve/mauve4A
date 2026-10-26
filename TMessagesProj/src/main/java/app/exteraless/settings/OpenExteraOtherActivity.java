@@ -141,8 +141,8 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         nagramDividerRow = addRow();
 
         experimentalHeaderRow = addRow("experimentalHeader");
-        localPremiumRow = addRow("localPremium");
         allowExperimentalFeaturesRow = addRow("allowExperimentalFeatures");
+        localPremiumRow = addRow("localPremium");
         unlimitedPinnedDialogsRow = -1;
         voiceEnhancementsRow = -1;
         enhancedVideoBitrateRow = -1;
