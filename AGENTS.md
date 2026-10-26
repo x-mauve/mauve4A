@@ -49,7 +49,7 @@ git submodule update --init --recursive --depth=1
 - Only `arm64-v8a` and `x86_64` are supported (Chaquopy ships Python 3.12 only for
   them). `NATIVE_TARGET` picks `arm64-v8a`, `universal`, or `SKIP` (Java and
   resources only, fastest for quick checks).
-- CI workflows live in `.github/workflows/` (`pr`, `canary`, `staging`, `release`).
+- CI workflows live in `.github/workflows/` (`pr`, `release`).
 
 ## Tests
 
