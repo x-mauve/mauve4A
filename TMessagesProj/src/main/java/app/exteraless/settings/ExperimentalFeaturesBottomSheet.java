@@ -36,9 +36,8 @@ import java.util.Locale;
  */
 public class ExperimentalFeaturesBottomSheet extends BottomSheet {
 
-    /** Сколько секунд кнопка Allow остаётся заблокированной. */
-    private static final int ALLOW_DELAY_SECONDS = 30;
-
+    // TODO: вернуть 30 секунд к релизу; 10 — пока тестируем окно.
+    private static final int ALLOW_DELAY_SECONDS = 10;
     private final Runnable onAllow;
 
     public ExperimentalFeaturesBottomSheet(BaseFragment fragment, Runnable onAllow) {
