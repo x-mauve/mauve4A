@@ -24844,8 +24844,13 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             // Форма стикера «как сообщение»: плашка времени берёт радиус у самой
             // картинки, иначе она остаётся круглой на скруглённом по-пузырю
             // стикере.
-            if ((documentAttachType != DOCUMENT_ATTACH_TYPE_ROUND && documentAttachType != DOCUMENT_ATTACH_TYPE_STICKER && currentMessageObject.type != MessageObject.TYPE_EMOJIS)
-                    || (documentAttachType == DOCUMENT_ATTACH_TYPE_STICKER && app.exteraless.chats.ChatsConfig.stickerShape() == 2)) {
+            if (documentAttachType == DOCUMENT_ATTACH_TYPE_STICKER && app.exteraless.chats.ChatsConfig.stickerShape() == 2) {
+                // Радиус — как у картинки, но bigRadius не выставляем: он сдвигает
+                // часы и галочки статуса на 2dp влево (layoutWidth - dp(bigRadius ? 28.3 : 26.3)),
+                // и они прилипают ко времени, ведь timeX стикеров этот сдвиг не учитывает.
+                int[] rad = photoImage.getRoundRadius();
+                r = Math.min(dp(8), Math.max(rad[2], rad[3]));
+            } else if (documentAttachType != DOCUMENT_ATTACH_TYPE_ROUND && documentAttachType != DOCUMENT_ATTACH_TYPE_STICKER && currentMessageObject.type != MessageObject.TYPE_EMOJIS) {
                 int[] rad = photoImage.getRoundRadius();
                 r = Math.min(dp(8), Math.max(rad[2], rad[3]));
                 bigRadius = SharedConfig.bubbleRadius >= 10;
