@@ -103,9 +103,9 @@ public class AboutHeaderCell extends LinearLayout {
         logo.setOnClickListener(listener);
     }
 
-    /** "12.9.2 (1258)" — версия плюс versionCode из PackageInfo, как в оригинале. */
+    /** "0.1.0-preview.1 (10000)": the mauve version plus versionCode from PackageInfo. */
     public static String buildVersionString() {
-        StringBuilder sb = new StringBuilder(BuildVars.BUILD_VERSION_STRING);
+        StringBuilder sb = new StringBuilder(BuildVars.MAUVE_VERSION_STRING);
         try {
             PackageInfo info = ApplicationLoader.applicationContext.getPackageManager()
                     .getPackageInfo(ApplicationLoader.applicationContext.getPackageName(), 0);
