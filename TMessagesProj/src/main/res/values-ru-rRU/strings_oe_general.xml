@@ -213,4 +213,18 @@
     <string name="OEUpdaterAllReleases">Все релизы на GitHub</string>
     <string name="OELiteFollowSystemSaver">Как в системе</string>
     <string name="OELiteFollowSystemSaverInfo">Энергосбережение включается вместе с системным режимом экономии заряда.</string>
+    <string name="OEGeneralAllowExperimentalFeatures">Разрешить экспериментальные функции</string>
+    <string name="OEGeneralAllowExperimentalFeaturesInfo">Открывает экспериментальные функции, часть из которых может быть нестабильной. В mauve Preferences появится новый пункт «Экспериментальные функции».</string>
+    <string name="OEExperimentalTitle">Экспериментальные функции</string>
+    <string name="OEExperimentalText">Вы соглашаетесь использовать экспериментальные функции приложения. Каждая из них:</string>
+    <string name="OEExperimentalUnstable">Нестабильная работа</string>
+    <string name="OEExperimentalUnstableInfo">Часть функций может быть недоделана: краши, сломанные интерфейсы, потеря данных.</string>
+    <string name="OEExperimentalChanges">Изменения без предупреждения</string>
+    <string name="OEExperimentalChangesInfo">Функции могут быть переработаны или удалены в любом обновлении.</string>
+    <string name="OEExperimentalSelf">Сами на себя</string>
+    <string name="OEExperimentalSelfInfo">Проблемы, вызванные экспериментальными функциями, могут не чиниться.</string>
+    <string name="OEExperimentalWarning">Нестабильная функция может сломать ваши чаты.</string>
+    <string name="OEExperimentalAllow">Разрешить</string>
+    <string name="OEExperimentalBulletinText">В mauve Preferences появилась новая секция «Экспериментальные функции».</string>
+    <string name="OEExperimentalBulletinOpen">Открыть</string>
 </resources>
