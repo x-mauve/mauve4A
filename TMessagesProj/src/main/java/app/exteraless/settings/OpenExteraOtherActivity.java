@@ -49,6 +49,7 @@ import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.config.ConfigItem;
 import tw.nekomimi.nekogram.helpers.AppRestartHelper;
 import tw.nekomimi.nekogram.helpers.SettingsBackupHelper;
+import org.telegram.utils.settings.SharedSettings;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import xyz.nextalone.nagram.NaConfig;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
@@ -77,6 +78,7 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
     private int experimentalHeaderRow;
     private int localPremiumRow;
+    private int allowExperimentalFeaturesRow;
     private int unlimitedPinnedDialogsRow;
     private int voiceEnhancementsRow;
     private int enhancedVideoBitrateRow;
@@ -140,6 +142,7 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
         experimentalHeaderRow = addRow("experimentalHeader");
         localPremiumRow = addRow("localPremium");
+        allowExperimentalFeaturesRow = addRow("allowExperimentalFeatures");
         unlimitedPinnedDialogsRow = -1;
         voiceEnhancementsRow = -1;
         enhancedVideoBitrateRow = -1;
@@ -219,6 +222,11 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             toggleCheck(view, NekoConfig.localPremium);
             NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.mainUserInfoChanged);
             NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.reloadInterface);
+        } else if (position == allowExperimentalFeaturesRow) {
+            boolean enabled = SharedSettings.experimentalSettingsAllowed.toggle();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(enabled);
+            }
         } else if (position == unlimitedPinnedDialogsRow) {
             toggleCheck(view, NekoConfig.unlimitedPinnedDialogs);
         } else if (position == voiceEnhancementsRow) {
@@ -533,6 +541,9 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                         if (position == localPremiumRow) {
                             cell.setTextAndValueAndCheck(getString(R.string.localPremium),
                                     getString(R.string.OELocalPremiumInfo), NekoConfig.localPremium.Bool(), true, true);
+                        } else if (position == allowExperimentalFeaturesRow) {
+                            cell.setTextAndCheck(getString(R.string.OEGeneralAllowExperimentalFeatures),
+                                    SharedSettings.experimentalSettingsAllowed.get(), true);
                         } else if (position == unlimitedPinnedDialogsRow) {
                             cell.setTextAndValueAndCheck(getString(R.string.UnlimitedPinnedDialogs),
                                     getString(R.string.UnlimitedPinnedDialogsAbout),
