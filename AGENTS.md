@@ -62,7 +62,6 @@ known gaps; remove entries when a gap is fixed. Details in `tests/README.md`.
 - `TMessagesProj/src/main/python/` and `TMessagesProj/chaquopy/` — Python plugin
   runtime.
 - `TMessagesProj/jni/` — native code.
-- `PLAN.md` — client plan for the extraBadges feature.
 
 ## Upstream sync
 
