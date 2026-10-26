@@ -77,15 +77,8 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
     private int nagramDividerRow;
 
     private int experimentalHeaderRow;
-    private int localPremiumRow;
     private int allowExperimentalFeaturesRow;
-    private int unlimitedPinnedDialogsRow;
-    private int voiceEnhancementsRow;
-    private int enhancedVideoBitrateRow;
-    private int sensitiveContentRow;
     private int experimentalDividerRow;
-    private boolean sensitiveEnabled;
-    private boolean sensitiveCanChange;
 
     private int backupHeaderRow;
     private int exportEtgRow;
@@ -107,12 +100,6 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
     public boolean onFragmentCreate() {
         GeneralConfig.init();
         return super.onFragmentCreate();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        checkSensitiveContent();
     }
 
     @Override
@@ -142,11 +129,6 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
         experimentalHeaderRow = addRow("experimentalHeader");
         allowExperimentalFeaturesRow = addRow("allowExperimentalFeatures");
-        localPremiumRow = addRow("localPremium");
-        unlimitedPinnedDialogsRow = -1;
-        voiceEnhancementsRow = -1;
-        enhancedVideoBitrateRow = -1;
-        sensitiveContentRow = addRow("sensitiveDisableFiltering", "SensitiveDisableFiltering");
         experimentalDividerRow = addRow();
 
         backupHeaderRow = addRow("backupHeader");
@@ -218,10 +200,6 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             }
         } else if (position == ayuMomentsRow) {
             presentFragment(new OpenExteraAyuMomentsActivity());
-        } else if (position == localPremiumRow) {
-            toggleCheck(view, NekoConfig.localPremium);
-            NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.mainUserInfoChanged);
-            NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.reloadInterface);
         } else if (position == allowExperimentalFeaturesRow) {
             // Включение идёт только через согласие: меняет флаг колбэк шита,
             // и он же перерисовывает ячейку. Выключение — сразу.
@@ -236,14 +214,6 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                 SharedSettings.experimentalSettingsAllowed.set(false);
                 updateExperimentalFeaturesCell();
             }
-        } else if (position == unlimitedPinnedDialogsRow) {
-            toggleCheck(view, NekoConfig.unlimitedPinnedDialogs);
-        } else if (position == voiceEnhancementsRow) {
-            toggleCheck(view, NaConfig.INSTANCE.getNoiseSuppressAndVoiceEnhance());
-        } else if (position == enhancedVideoBitrateRow) {
-            toggleCheck(view, NaConfig.INSTANCE.getEnhancedVideoBitrate());
-        } else if (position == sensitiveContentRow) {
-            toggleSensitiveContent(view);
         } else if (position == exportEtgRow) {
             exportEtgSettings();
         } else if (position == importEtgRow) {
@@ -272,53 +242,6 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         if (holder != null && holder.itemView instanceof TextCheckCell) {
             ((TextCheckCell) holder.itemView).setChecked(
                     SharedSettings.experimentalSettingsAllowed.get());
-        }
-    }
-
-    private void checkSensitiveContent() {
-        TL_account.contentSettings cached = getMessagesController().getContentSettings();
-        if (cached != null) {
-            applySensitiveContent(cached);
-        } else {
-            sensitiveEnabled = getMessagesController().showSensitiveContent();
-            bindSensitiveCell();
-        }
-        getMessagesController().getContentSettings(settings -> {
-            if (settings != null) {
-                applySensitiveContent(settings);
-            }
-        });
-    }
-
-    private void applySensitiveContent(TL_account.contentSettings settings) {
-        if (sensitiveEnabled == settings.sensitive_enabled && sensitiveCanChange == settings.sensitive_can_change) {
-            return;
-        }
-        sensitiveEnabled = settings.sensitive_enabled;
-        sensitiveCanChange = settings.sensitive_can_change;
-        bindSensitiveCell();
-    }
-
-    private void bindSensitiveCell() {
-        if (listView == null || sensitiveContentRow < 0) {
-            return;
-        }
-        RecyclerView.ViewHolder holder = listView.findViewHolderForAdapterPosition(sensitiveContentRow);
-        if (holder != null && holder.itemView instanceof TextCheckCell) {
-            TextCheckCell cell = (TextCheckCell) holder.itemView;
-            cell.setChecked(sensitiveEnabled);
-            cell.setEnabled(sensitiveCanChange, null);
-        }
-    }
-
-    private void toggleSensitiveContent(View view) {
-        if (!sensitiveCanChange || getParentActivity() == null) {
-            return;
-        }
-        sensitiveEnabled = !sensitiveEnabled;
-        getMessagesController().setContentSettings(sensitiveEnabled);
-        if (view instanceof TextCheckCell) {
-            ((TextCheckCell) view).setChecked(sensitiveEnabled);
         }
     }
 
@@ -558,27 +481,10 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                         cell.setIcon(R.drawable.msg_settings);
                     } else {
                         cell.setIcon(0);
-                        if (position == localPremiumRow) {
-                            cell.setTextAndValueAndCheck(getString(R.string.localPremium),
-                                    getString(R.string.OELocalPremiumInfo), NekoConfig.localPremium.Bool(), true, true);
-                        } else if (position == allowExperimentalFeaturesRow) {
+                        if (position == allowExperimentalFeaturesRow) {
                             cell.setTextAndValueAndCheck(getString(R.string.OEGeneralAllowExperimentalFeatures),
                                     getString(R.string.OEGeneralAllowExperimentalFeaturesInfo),
                                     SharedSettings.experimentalSettingsAllowed.get(), true, true);
-                        } else if (position == unlimitedPinnedDialogsRow) {
-                            cell.setTextAndValueAndCheck(getString(R.string.UnlimitedPinnedDialogs),
-                                    getString(R.string.UnlimitedPinnedDialogsAbout),
-                                    NekoConfig.unlimitedPinnedDialogs.Bool(), true, true);
-                        } else if (position == voiceEnhancementsRow) {
-                            cell.setTextAndCheck(getString(R.string.NoiseSuppressAndVoiceEnhance),
-                                    NaConfig.INSTANCE.getNoiseSuppressAndVoiceEnhance().Bool(), true);
-                        } else if (position == enhancedVideoBitrateRow) {
-                            cell.setTextAndCheck(getString(R.string.EnhancedVideoBitrate),
-                                    NaConfig.INSTANCE.getEnhancedVideoBitrate().Bool(), true);
-                        } else if (position == sensitiveContentRow) {
-                            cell.setTextAndValueAndCheck(getString(R.string.SensitiveDisableFiltering),
-                                    getString(R.string.SensitiveAbout), sensitiveEnabled, true, false);
-                            cell.setEnabled(sensitiveCanChange, null);
                         }
                     }
                     break;
