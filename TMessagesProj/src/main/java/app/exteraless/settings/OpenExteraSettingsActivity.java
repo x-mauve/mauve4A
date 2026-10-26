@@ -3,6 +3,7 @@ package app.exteraless.settings;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.content.Context;
+import android.annotation.SuppressLint;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -16,6 +17,7 @@ import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Components.RecyclerListView;
 
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
+import org.telegram.utils.settings.SharedSettings;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 
 /**
@@ -38,6 +40,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private int chatsRow;
     private int pluginsRow;
     private int otherRow;
+    private int experimentalFeaturesRow;
     private int categoriesDividerRow;
 
     private int linksHeaderRow;
@@ -62,6 +65,10 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         chatsRow = addRow("chats");
         pluginsRow = addRow("plugins");
         otherRow = addRow("other");
+        // Появляется только с включённым «Allow Experimental Features»: флаг
+        // меняется в Other, поэтому строки пересчитываются ещё и в onResume.
+        experimentalFeaturesRow = SharedSettings.experimentalSettingsAllowed.get()
+                ? addRow("experimentalFeatures") : -1;
         categoriesDividerRow = addRow();
 
         linksHeaderRow = addRow("linksHeader");
@@ -148,6 +155,21 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         }
     }
 
+    /**
+     * Строка «Experimental Features» добавляется и убирается тумблером в Other,
+     * поэтому после каждого возврата пересчитываем список: notifyDataSetChanged
+     * перечитает rowCount и rowMap из updateRows().
+     */
+    @SuppressLint("NotifyDataSetChanged")
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateRows();
+        if (listAdapter != null) {
+            listAdapter.notifyDataSetChanged();
+        }
+    }
+
     @Override
     protected String getActionBarTitle() {
         return getString(R.string.OpenExtera);
@@ -190,6 +212,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new app.exteraless.plugins.ui.PluginsActivity());
         } else if (position == otherRow) {
             presentFragment(new OpenExteraOtherActivity());
+        } else if (position == experimentalFeaturesRow) {
+            presentFragment(new OpenExteraExperimentalActivity());
         } else if (position == channelRow) {
             getMessagesController().openByUserName("mauveApp", this, 1);
         } else if (position == sourceRow) {
@@ -248,6 +272,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndIcon(getString(R.string.OpenExteraPlugins), R.drawable.msg_plugins, true);
                     } else if (position == otherRow) {
                         cell.setTextAndIcon(getString(R.string.OpenExteraOther), R.drawable.msg_fave, false);
+                    } else if (position == experimentalFeaturesRow) {
+                        cell.setTextAndIcon(getString(R.string.OEExperimentalTitle), R.drawable.baseline_code_24, true);
                     } else if (position == channelRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.ProfileChannel),
                                 "@mauveApp", R.drawable.msg_channel, true);
