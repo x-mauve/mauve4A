@@ -48,7 +48,6 @@ public class ExperimentalFeaturesBottomSheet extends BottomSheet {
         setApplyBottomPadding(false);
         setApplyTopPadding(false);
 
-        final int primary = getThemedColor(Theme.key_windowBackgroundWhiteBlueText4);
         final int red = getThemedColor(Theme.key_text_RedBold);
 
         LinearLayout content = new LinearLayout(activity);
@@ -56,14 +55,14 @@ public class ExperimentalFeaturesBottomSheet extends BottomSheet {
         content.setPadding(dp(24), 0, dp(24), dp(12));
 
         // Круглая иконка, как у окон согласия Material 3: треугольник
-        // предупреждения на светлом круге. baseline_stop_24 рисуется квадратом,
-        // поэтому на нормальном глифе он выглядел красным квадратом.
+        // предупреждения на светло-красном круге. baseline_stop_24 рисуется
+        // квадратом, поэтому на нормальном глифе он выглядел красным квадратом.
         FrameLayout badge = new FrameLayout(activity);
-        badge.setBackground(Theme.createRoundRectDrawable(dp(200), ColorUtils.setAlphaComponent(primary, 60)));
+        badge.setBackground(Theme.createRoundRectDrawable(dp(200), ColorUtils.setAlphaComponent(red, 38)));
         ImageView icon = new ImageView(activity);
         icon.setImageResource(R.drawable.warning_sign);
         icon.setColorFilter(red);
-        badge.addView(icon, LayoutHelper.createFrame(28, 28, Gravity.CENTER));
+        badge.addView(icon, LayoutHelper.createFrame(42, 42, Gravity.CENTER));
         content.addView(badge, LayoutHelper.createLinear(72, 72, Gravity.CENTER_HORIZONTAL, 0, 24, 0, 0));
 
         TextView title = new TextView(activity);
