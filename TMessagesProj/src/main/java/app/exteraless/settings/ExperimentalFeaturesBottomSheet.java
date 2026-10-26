@@ -55,12 +55,13 @@ public class ExperimentalFeaturesBottomSheet extends BottomSheet {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(24), 0, dp(24), dp(12));
 
-        // Круглая иконка, как у окон согласия Material 3: тёмная рука
-        // предупреждения на светлом круге.
+        // Круглая иконка, как у окон согласия Material 3: треугольник
+        // предупреждения на светлом круге. baseline_stop_24 рисуется квадратом,
+        // поэтому на нормальном глифе он выглядел красным квадратом.
         FrameLayout badge = new FrameLayout(activity);
         badge.setBackground(Theme.createRoundRectDrawable(dp(200), ColorUtils.setAlphaComponent(primary, 60)));
         ImageView icon = new ImageView(activity);
-        icon.setImageResource(R.drawable.baseline_stop_24);
+        icon.setImageResource(R.drawable.warning_sign);
         icon.setColorFilter(red);
         badge.addView(icon, LayoutHelper.createFrame(28, 28, Gravity.CENTER));
         content.addView(badge, LayoutHelper.createLinear(72, 72, Gravity.CENTER_HORIZONTAL, 0, 24, 0, 0));
