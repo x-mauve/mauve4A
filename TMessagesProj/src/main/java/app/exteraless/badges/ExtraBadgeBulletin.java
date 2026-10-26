@@ -4,6 +4,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -17,11 +19,12 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.BulletinFactory;
 
 /**
- * Bulletin shown on a badge tap, with a shortcut to {@link ExtraBadgeBottomSheet}.
+ * Bulletins shown on a badge or client mark tap, with a shortcut to the matching sheet.
  */
 public final class ExtraBadgeBulletin {
 
@@ -42,6 +45,25 @@ public final class ExtraBadgeBulletin {
                 LocaleController.getString(R.string.ExtraBadgeBulletinText),
                 LocaleController.getString(R.string.ExtraBadgeLearnMore),
                 () -> new ExtraBadgeBottomSheet(fragment).show());
+        bulletin.show();
+        return bulletin;
+    }
+
+    public static Bulletin showClientMark(BaseFragment fragment) {
+        if (fragment == null || fragment.getParentActivity() == null) {
+            return null;
+        }
+        Drawable seal = ContextCompat.getDrawable(fragment.getParentActivity(), R.drawable.msg_exteraless_seal);
+        if (seal != null) {
+            seal = seal.mutate();
+            seal.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_undo_infoColor, fragment.getResourceProvider()), PorterDuff.Mode.SRC_IN));
+        }
+        Bulletin bulletin = BulletinFactory.of(fragment).createSimpleBulletin(
+                seal,
+                LocaleController.getString(R.string.OEProfileClientMark),
+                LocaleController.getString(R.string.ClientMarkBulletinText),
+                LocaleController.getString(R.string.ExtraBadgeLearnMore),
+                () -> new ClientMarkBottomSheet(fragment).show());
         bulletin.show();
         return bulletin;
     }
