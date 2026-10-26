@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- mauve now has its own version, independent of the upstream Telegram one,
+  starting at `0.1.0-preview.1` (versionCode `10000`). The About screen and the
+  update checker use it; plugins still check against the Telegram version.
 - The default download folder for saved files is now `Downloads/mauve`
   (previously `Downloads/exteraless`). Existing users who did not override the
   setting are migrated to the new default on the next launch.
