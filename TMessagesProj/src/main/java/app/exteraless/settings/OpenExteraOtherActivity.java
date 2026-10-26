@@ -226,7 +226,12 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             // Включение идёт только через согласие: меняет флаг колбэк шита,
             // и он же перерисовывает ячейку. Выключение — сразу.
             if (!SharedSettings.experimentalSettingsAllowed.get()) {
-                showDialog(new ExperimentalFeaturesBottomSheet(this, this::updateExperimentalFeaturesCell));
+                showDialog(new ExperimentalFeaturesBottomSheet(this, () -> {
+                    // Колбэк «Allow» шита: без set здесь шит только рисовал бы
+                    // ячейку, а флаг оставался выключенным и тумблер не жил.
+                    SharedSettings.experimentalSettingsAllowed.set(true);
+                    updateExperimentalFeaturesCell();
+                }));
             } else {
                 SharedSettings.experimentalSettingsAllowed.set(false);
                 updateExperimentalFeaturesCell();
