@@ -3,7 +3,7 @@ name: Release Build
 on:
   push:
     branches:
-      - main
+      - master
     paths-ignore:
       - '**.md'
       - '.github/**'
@@ -103,7 +103,7 @@ jobs:
           path: |
             TMessagesProj/build/outputs/apk/release/*.apk
       - name: Publish GitHub pre-release
-        if: ${{ github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.publish) && !contains(github.event.head_commit.message, '[skip publish]') }}
+        if: ${{ github.ref == 'refs/heads/master' && (github.event_name != 'workflow_dispatch' || inputs.publish) && !contains(github.event.head_commit.message, '[skip publish]') }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
