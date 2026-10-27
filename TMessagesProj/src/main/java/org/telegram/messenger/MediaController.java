@@ -4419,6 +4419,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public void setPlaybackOrderType(int type) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.setOrder(type))) {
+            return;
+        }
         boolean oldShuffle = SharedConfig.shuffleMusic;
         SharedConfig.setPlaybackOrderType(type);
         if (oldShuffle != SharedConfig.shuffleMusic) {
