@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Notifications:** the status-bar notification icon now uses the mauve
+  app-logo arrows instead of the old exteraless mark.
+
 ### Added
 
 - **Profile badges:** tapping the custom badge next to a name now shows a
