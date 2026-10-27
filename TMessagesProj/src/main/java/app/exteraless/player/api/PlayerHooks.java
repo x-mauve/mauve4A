@@ -6,9 +6,12 @@ import org.telegram.messenger.FileLog;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import xyz.nextalone.nagram.NaConfig;
+
 /**
- * Entry point for the hooks in MediaController and SharedConfig. With no
- * interceptors registered the player behaves exactly like upstream.
+ * Entry point for the hooks in MediaController and SharedConfig. With the
+ * Experimental Features toggle off or no interceptors registered, the player
+ * behaves exactly like upstream.
  */
 public final class PlayerHooks {
 
@@ -29,7 +32,7 @@ public final class PlayerHooks {
 
     /** Cheap check so hooks don't allocate a PlayerCall when nothing listens. */
     public static boolean isActive() {
-        return !interceptors.isEmpty();
+        return !interceptors.isEmpty() && NaConfig.INSTANCE.getEnablePlayerApi().Bool();
     }
 
     /** @return true if an interceptor handled the call and the original logic must be skipped */
