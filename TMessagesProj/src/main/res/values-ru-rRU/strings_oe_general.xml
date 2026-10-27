@@ -216,6 +216,9 @@
     <string name="OEGeneralAllowExperimentalFeatures">Разрешить экспериментальные возможности</string>
     <string name="OEGeneralAllowExperimentalFeaturesInfo">Открывает экспериментальные возможности, часть из которых может быть нестабильной. В mauve Preferences появится новый пункт «Экспериментальные возможности».</string>
     <string name="OEExperimentalTitle">Экспериментальные возможности</string>
+    <string name="OEPlayback">Воспроизведение</string>
+    <string name="OEEnablePlayerApi">Включить Player API</string>
+    <string name="OEEnablePlayerApiInfo">Позволяет функциям перехватывать управление музыкальным плеером: воспроизведение, паузу, переключение треков, перемотку, перемешивание и повтор.</string>
     <string name="OEExperimentalText">Вы соглашаетесь использовать экспериментальные возможности приложения. Каждая из них:</string>
     <string name="OEExperimentalUnstable">Нестабильная работа</string>
     <string name="OEExperimentalUnstableInfo">Часть функций может быть недоделана: краши, сломанные интерфейсы, потеря данных.</string>
