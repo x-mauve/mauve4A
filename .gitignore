@@ -10,6 +10,7 @@
 build/
 obj/
 local.properties
+local.properties.prod
 TMessagesProj/.cxx/
 TMessagesProj/jniLibs/
 TMessagesProj/jniRes/
