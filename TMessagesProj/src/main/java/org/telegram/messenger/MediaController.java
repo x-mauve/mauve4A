@@ -138,6 +138,8 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
+import app.exteraless.player.api.PlayerCall;
+import app.exteraless.player.api.PlayerHooks;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.SaveToDownloadReceiver;
 import tw.nekomimi.nekogram.helpers.ChatsHelper;
@@ -3728,6 +3730,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public boolean playMessage(final MessageObject messageObject, boolean silent) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.play(messageObject))) {
+            return true;
+        }
         if (messageObject == null) {
             return false;
         }
@@ -4459,6 +4464,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public boolean pauseMessage(MessageObject messageObject, boolean smoothFade) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.pause(messageObject))) {
+            return true;
+        }
         if (audioPlayer == null && videoPlayer == null || messageObject == null || playingMessageObject == null || !isSamePlayingMessage(messageObject)) {
             return false;
         }
