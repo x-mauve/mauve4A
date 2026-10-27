@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sheet explaining the unique mauve badge.
 - **Profile client mark:** the "This user uses mauve" line is now tappable and
   shows a bulletin with a "Learn More" button that opens a sheet about mauve.
+- **Player API (experimental):** an internal API that can intercept music
+  player controls: play, pause, next, previous, seek, shuffle/order and repeat.
+  Groundwork for On-Device Playback Control.
 
 ### Fixed
 
