@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shows a bulletin with a "Learn More" button that opens a sheet about mauve.
 - **Player API (experimental):** an internal API that can intercept music
   player controls: play, pause, next, previous, seek, shuffle/order and repeat.
-  Groundwork for On-Device Playback Control.
+  Groundwork for On-Device Playback Control. Turn it on in Experimental
+  Features → Playback → Enable Player API.
 
 ### Fixed
 
