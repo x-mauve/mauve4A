@@ -89,6 +89,9 @@
     <string name="OEEnergyProfilerShareCurrent">Share energy report so far</string>
     <string name="OEEnergyProfilerShareLast">Share last energy report</string>
     <string name="OEPluginToggleLogShare">Share plugin toggle log</string>
+    <string name="OEPlayerCallsLog">Log player calls</string>
+    <string name="OEPlayerCallsBlock">Block music player calls</string>
+    <string name="OEPlayerCallsOff">Stop intercepting player calls</string>
     <string name="OEProfileIdDate">Registration and join date</string>
     <string name="OEProfileAccountCreated">**%1$s** joined Telegram %2$s</string>
     <string name="OEProfileClientMark">This user uses mauve</string>
