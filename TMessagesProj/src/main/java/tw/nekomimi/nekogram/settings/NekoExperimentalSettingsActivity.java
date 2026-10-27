@@ -117,6 +117,11 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     private final AbstractConfigCell unlimitedFavedStickersRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.unlimitedFavedStickers, getString(R.string.UnlimitedFavoredStickersAbout)));
     private final AbstractConfigCell dividerGeneral = cellGroup.appendCell(new ConfigCellDivider());
 
+    // Playback
+    private final AbstractConfigCell headerPlayback = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.OEPlayback)));
+    private final AbstractConfigCell enablePlayerApiRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getEnablePlayerApi(), getString(R.string.OEEnablePlayerApiInfo)));
+    private final AbstractConfigCell dividerPlayback = cellGroup.appendCell(new ConfigCellDivider());
+
     // Connections
     private final AbstractConfigCell headerConnection = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.Connection)));
     private final AbstractConfigCell boostUploadRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.uploadBoost));

@@ -138,6 +138,8 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
+import app.exteraless.player.api.PlayerCall;
+import app.exteraless.player.api.PlayerHooks;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.SaveToDownloadReceiver;
 import tw.nekomimi.nekogram.helpers.ChatsHelper;
@@ -2700,6 +2702,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public boolean seekToProgress(MessageObject messageObject, float progress) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.seek(messageObject, progress))) {
+            return true;
+        }
         final MessageObject playingMessageObject = this.playingMessageObject;
         if (audioPlayer == null && videoPlayer == null || messageObject == null || playingMessageObject == null || !isSamePlayingMessage(messageObject)) {
             return false;
@@ -2733,6 +2738,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public boolean seekToProgressMs(MessageObject messageObject, long progressMs) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.seekMs(messageObject, progressMs))) {
+            return true;
+        }
         final MessageObject playingMessageObject = this.playingMessageObject;
         if (audioPlayer == null && videoPlayer == null || messageObject == null || playingMessageObject == null || !isSamePlayingMessage(messageObject)) {
             return false;
@@ -3016,6 +3024,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public void playNextMessage() {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.next())) {
+            return;
+        }
         playNextMessageWithoutOrder(false);
     }
 
@@ -3116,6 +3127,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public void playPreviousMessage() {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.previous())) {
+            return;
+        }
         ArrayList<MessageObject> currentPlayList = SharedConfig.shuffleMusic ? shuffledPlaylist : playlist;
         if (currentPlayList.isEmpty() || currentPlaylistNum < 0 || currentPlaylistNum >= currentPlayList.size()) {
             return;
@@ -3728,6 +3742,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public boolean playMessage(final MessageObject messageObject, boolean silent) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.play(messageObject))) {
+            return true;
+        }
         if (messageObject == null) {
             return false;
         }
@@ -4402,6 +4419,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public void setPlaybackOrderType(int type) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.setOrder(type))) {
+            return;
+        }
         boolean oldShuffle = SharedConfig.shuffleMusic;
         SharedConfig.setPlaybackOrderType(type);
         if (oldShuffle != SharedConfig.shuffleMusic) {
@@ -4459,6 +4479,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public boolean pauseMessage(MessageObject messageObject, boolean smoothFade) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.pause(messageObject))) {
+            return true;
+        }
         if (audioPlayer == null && videoPlayer == null || messageObject == null || playingMessageObject == null || !isSamePlayingMessage(messageObject)) {
             return false;
         }

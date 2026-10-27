@@ -64,6 +64,8 @@ import java.util.LinkedList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.stream.Collectors;
 
+import app.exteraless.player.api.PlayerCall;
+import app.exteraless.player.api.PlayerHooks;
 import tw.nekomimi.nekogram.NekoConfig;
 import xyz.nextalone.nagram.NaConfig;
 
@@ -1309,6 +1311,9 @@ public class SharedConfig {
     }
 
     public static void setRepeatMode(int mode) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.setRepeat(mode))) {
+            return;
+        }
         repeatMode = mode;
         if (repeatMode < 0 || repeatMode > AudioPlayerAlert.PLAY_ONCE) {
             repeatMode = 0;

@@ -591,6 +591,12 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    val enablePlayerApi =
+        addConfig(
+            "OEEnablePlayerApi",
+            ConfigItem.configTypeBool,
+            false
+        )
     val messageSavingSaveMedia =
         addConfig(
             "MessageSavingSaveMedia",

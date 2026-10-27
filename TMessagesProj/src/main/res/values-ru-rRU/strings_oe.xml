@@ -60,6 +60,9 @@
     <string name="OEEnergyProfilerShareCurrent">Отправить текущий отчёт об энергопотреблении</string>
     <string name="OEEnergyProfilerShareLast">Отправить последний отчёт об энергопотреблении</string>
     <string name="OEPluginToggleLogShare">Отправить журнал включения плагинов</string>
+    <string name="OEPlayerCallsLog">Логировать вызовы плеера</string>
+    <string name="OEPlayerCallsBlock">Блокировать вызовы музыкального плеера</string>
+    <string name="OEPlayerCallsOff">Перестать перехватывать вызовы плеера</string>
     <string name="OEProfileIdDate">Дата регистрации и вступления</string>
     <string name="OEProfileAccountCreated">Аккаунт **%1$s** создан %2$s</string>
     <string name="OEProfileClientMark">Пользователь использует mauve</string>

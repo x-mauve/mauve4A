@@ -83,6 +83,9 @@
     <string name="OEGeneralAllowExperimentalFeatures">Allow Experimental Features</string>
     <string name="OEGeneralAllowExperimentalFeaturesInfo">Unlocks experimental features, some of which may be unstable. A new “Experimental Features” item appears in mauve Preferences.</string>
     <string name="OEExperimentalTitle">Experimental Features</string>
+    <string name="OEPlayback">Playback</string>
+    <string name="OEEnablePlayerApi">Enable Player API</string>
+    <string name="OEEnablePlayerApiInfo">Lets features intercept music player controls: play, pause, track switching, seeking, shuffle and repeat.</string>
     <string name="OEExperimentalText">You agree to use the app’s experimental features. Every experiment:</string>
     <string name="OEExperimentalUnstable">Unstable work</string>
     <string name="OEExperimentalUnstableInfo">Some features may be unfinished: crashes, broken interfaces or lost data.</string>

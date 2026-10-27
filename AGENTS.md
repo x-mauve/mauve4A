@@ -31,9 +31,12 @@ mauve is versioned independently of upstream Telegram, in `gradle.properties`:
 - `MAUVE_VERSION_NAME`: `X.Y.Z`, `X.Y.Z-preview.N` or `X.Y.Z-rc.N`
   (preview < rc < final). Release tags are the same with a `v` prefix,
   e.g. `v0.1.0-preview.1`.
-- `MAUVE_VERSION_CODE`: the APK `versionCode`. Bump it by one for every
-  published build, previews included. Never lower it, or users can't update
-  without reinstalling.
+- `MAUVE_VERSION_CODE`: the APK `versionCode`. Every commit that changes code
+  or anything else that ends up in the APK (resources, strings, build config)
+  must also bump it by exactly one, in that same commit. Commits that don't
+  affect the APK (docs, CI, tests) leave it alone. Bump only the code, not
+  `MAUVE_VERSION_NAME`. Never lower it, or users can't update without
+  reinstalling.
 - `APP_VERSION_NAME` / `APP_VERSION_CODE` are the upstream Telegram version.
   They stay in `BuildVars.BUILD_VERSION_STRING`, which plugins check their
   `app_version` against, so only change them on an upstream sync.
