@@ -2702,6 +2702,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public boolean seekToProgress(MessageObject messageObject, float progress) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.seek(messageObject, progress))) {
+            return true;
+        }
         final MessageObject playingMessageObject = this.playingMessageObject;
         if (audioPlayer == null && videoPlayer == null || messageObject == null || playingMessageObject == null || !isSamePlayingMessage(messageObject)) {
             return false;
@@ -2735,6 +2738,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public boolean seekToProgressMs(MessageObject messageObject, long progressMs) {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.seekMs(messageObject, progressMs))) {
+            return true;
+        }
         final MessageObject playingMessageObject = this.playingMessageObject;
         if (audioPlayer == null && videoPlayer == null || messageObject == null || playingMessageObject == null || !isSamePlayingMessage(messageObject)) {
             return false;
