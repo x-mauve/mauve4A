@@ -3018,6 +3018,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public void playNextMessage() {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.next())) {
+            return;
+        }
         playNextMessageWithoutOrder(false);
     }
 
@@ -3118,6 +3121,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     }
 
     public void playPreviousMessage() {
+        if (PlayerHooks.isActive() && PlayerHooks.dispatch(PlayerCall.previous())) {
+            return;
+        }
         ArrayList<MessageObject> currentPlayList = SharedConfig.shuffleMusic ? shuffledPlaylist : playlist;
         if (currentPlayList.isEmpty() || currentPlaylistNum < 0 || currentPlaylistNum >= currentPlayList.size()) {
             return;
