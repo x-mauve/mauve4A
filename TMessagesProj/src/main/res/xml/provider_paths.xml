@@ -10,6 +10,8 @@
         path="media/" />
     <files-path name="logs" path="/logs/"/>
     <files-path name="cache" path="/cache/"/>
+    <!-- Downloaded update APKs installed through the FileProvider -->
+    <files-path name="updates" path="updates/" />
     <root-path name="external_files" path="/storage/" />
     <cache-path name="cache_root" path="." />
 </paths>

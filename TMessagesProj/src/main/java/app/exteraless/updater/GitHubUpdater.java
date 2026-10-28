@@ -52,6 +52,9 @@ public final class GitHubUpdater {
     private static final String PREFS = "exteraless_updater";
     private static final String KEY_LAST_CHECK = "last_check";
     private static final String KEY_SKIPPED = "skipped_tag";
+    private static final String KEY_READY_TAG = "ready_tag";
+    private static final String KEY_READY_PATH = "ready_path";
+    private static final String KEY_READY_SIZE = "ready_size";
     private static final Pattern VERSION = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)(?:-(preview|rc)\\.(\\d+))?");
     // A preview comes before an rc, and both come before the final release
     private static final int STAGE_PREVIEW = 0, STAGE_RC = 1, STAGE_FINAL = 2;
@@ -70,6 +73,8 @@ public final class GitHubUpdater {
     // Shared state: the update pill in settings and both sheets subscribe to it.
     private static Release available; // last release that is newer than the installed one
     private static File readyFile; // downloaded APK for `available`
+    private static String readyTag; // set while readyFile is tracked in prefs
+    private static boolean loaded;
     private static long progressDone, progressTotal;
     private static final CopyOnWriteArrayList<StateListener> listeners = new CopyOnWriteArrayList<>();
     private static volatile long lastQuietFetch;
@@ -179,13 +184,14 @@ public final class GitHubUpdater {
             available = found;
         } else if (found != null && Boolean.FALSE.equals(isNewer)) {
             // The fetched release matches the installed version: drop cached state,
-            // but keep a ready APK for that same release.
-            boolean keepReady = readyFile != null && found.apkName != null
-                    && found.apkName.equals(readyFile.getName());
+            // but keep a ready APK for that same tag.
+            boolean keepReady = readyFile != null && found.tag != null && found.tag.equals(readyTag);
             available = keepReady ? found : null;
             if (!keepReady && readyFile != null) {
                 readyFile.delete();
                 readyFile = null;
+                readyTag = null;
+                removeReadyKeys();
             }
         }
         notifyState();
@@ -200,6 +206,7 @@ public final class GitHubUpdater {
     }
 
     public static int getState() {
+        ensureLoaded();
         if (isDownloading()) {
             return STATE_DOWNLOADING;
         }
@@ -210,6 +217,7 @@ public final class GitHubUpdater {
     }
 
     public static Release getAvailable() {
+        ensureLoaded();
         return available;
     }
 
@@ -224,7 +232,7 @@ public final class GitHubUpdater {
     public static void addListener(StateListener listener) {
         if (listener != null && !listeners.contains(listener)) {
             listeners.add(listener);
-            listener.onUpdateStateChanged(getState(), available, progressDone, progressTotal);
+            listener.onUpdateStateChanged(getState(), getAvailable(), progressDone, progressTotal);
         }
     }
 
@@ -234,11 +242,58 @@ public final class GitHubUpdater {
 
     private static void notifyState() {
         final int state = getState();
-        final Release release = available;
+        final Release release = getAvailable();
         final long done = progressDone, total = progressTotal;
         for (StateListener listener : listeners) {
             listener.onUpdateStateChanged(state, release, done, total);
         }
+    }
+
+    /**
+     * A downloaded APK survives process restarts: if the remembered file is intact
+     * and its tag is still newer than the installed version, the state is READY
+     * right away. Anything stale (usually the APK installed successfully) is cleaned up.
+     */
+    private static void ensureLoaded() {
+        if (loaded) {
+            return;
+        }
+        synchronized (GitHubUpdater.class) {
+            if (loaded) {
+                return;
+            }
+            loaded = true;
+            String tag = prefs().getString(KEY_READY_TAG, null);
+            String path = prefs().getString(KEY_READY_PATH, null);
+            long size = prefs().getLong(KEY_READY_SIZE, 0);
+            if (TextUtils.isEmpty(tag) || TextUtils.isEmpty(path)) {
+                return;
+            }
+            File file = new File(path);
+            if (compareVersionTag(tag) <= 0) {
+                file.delete();
+                removeReadyKeys();
+                return;
+            }
+            if (file.exists() && file.length() == size) {
+                readyFile = file;
+                readyTag = tag;
+                if (available == null) {
+                    Release release = new Release();
+                    release.tag = tag;
+                    release.name = tag;
+                    release.apkName = file.getName();
+                    release.apkSize = size;
+                    available = release;
+                }
+            } else {
+                removeReadyKeys();
+            }
+        }
+    }
+
+    private static void removeReadyKeys() {
+        prefs().edit().remove(KEY_READY_TAG).remove(KEY_READY_PATH).remove(KEY_READY_SIZE).apply();
     }
 
     /**
@@ -395,6 +450,24 @@ public final class GitHubUpdater {
         return 0;
     }
 
+    /** Same order as compareVersion, but for a plain tag string. */
+    private static int compareVersionTag(String tag) {
+        Integer order = compareVersionBaselines(version(tag, tag), BuildVars.MAUVE_VERSION_STRING);
+        return order == null ? 0 : order;
+    }
+
+    private static Integer compareVersionBaselines(int[] remote, int[] local) {
+        if (remote == null || local == null) {
+            return null;
+        }
+        for (int i = 0; i < remote.length; i++) {
+            if (remote[i] != local[i]) {
+                return Integer.compare(remote[i], local[i]);
+            }
+        }
+        return 0;
+    }
+
     private static Boolean isNewer(Release release) throws Exception {
         Integer versionOrder = compareVersion(release);
         if (versionOrder != null && versionOrder != 0) {
@@ -494,7 +567,7 @@ public final class GitHubUpdater {
         if (release == null || isDownloading()) {
             return;
         }
-        File dir = new File(ApplicationLoader.applicationContext.getCacheDir(), "updates");
+        File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), "updates");
         if (!dir.exists() && !dir.mkdirs()) {
             progressDone = progressTotal = 0;
             notifyState();
@@ -567,6 +640,12 @@ public final class GitHubUpdater {
                     available = release;
                     progressDone = totalBytes;
                     progressTotal = totalBytes;
+                    readyTag = release.tag;
+                    prefs().edit()
+                            .putString(KEY_READY_TAG, release.tag)
+                            .putString(KEY_READY_PATH, target.getAbsolutePath())
+                            .putLong(KEY_READY_SIZE, target.length())
+                            .apply();
                     notifyState();
                     if (listener != null) {
                         listener.onFinished(true, false);
@@ -581,6 +660,8 @@ public final class GitHubUpdater {
                 } else {
                     target.delete();
                     readyFile = null;
+                    readyTag = null;
+                    removeReadyKeys();
                     progressDone = progressTotal = 0;
                     notifyState();
                     if (listener != null) {
