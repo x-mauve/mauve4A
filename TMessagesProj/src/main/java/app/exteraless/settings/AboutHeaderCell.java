@@ -121,14 +121,19 @@ public class AboutHeaderCell extends LinearLayout {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
+        // The first callback restores the current state without animating it in
+        final boolean[] attached = {false};
         stateListener = (state, release, done, total) -> {
-            boolean visible = state != GitHubUpdater.STATE_NONE;
-            updateButton.setState(state, release, done, total, true);
+            updateButton.setState(state, done, total, attached[0]);
+            int margin = state != GitHubUpdater.STATE_NONE ? 0 : AndroidUtilities.dp(versionBottomMargin);
             LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) versionView.getLayoutParams();
-            lp.bottomMargin = visible ? 0 : versionBottomMargin;
-            versionView.setLayoutParams(lp);
+            if (lp.bottomMargin != margin) {
+                lp.bottomMargin = margin;
+                versionView.setLayoutParams(lp);
+            }
         };
         GitHubUpdater.addListener(stateListener);
+        attached[0] = true;
         GitHubUpdater.refreshQuietly();
     }
 
