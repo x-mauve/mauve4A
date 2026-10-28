@@ -454,7 +454,7 @@ public final class GitHubUpdater {
 
     /** Same order as compareVersion, but for a plain tag string. */
     private static int compareVersionTag(String tag) {
-        Integer order = compareVersionBaselines(version(tag, tag), BuildVars.MAUVE_VERSION_STRING);
+        Integer order = compareVersionBaselines(version(tag, tag), version(BuildVars.MAUVE_VERSION_STRING));
         return order == null ? 0 : order;
     }
 

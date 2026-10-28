@@ -201,6 +201,9 @@
     <string name="OEUpdateDownloading">Downloading update</string>
     <string name="OEUpdateDownloadFailed">Could not download the update</string>
     <string name="OEUpdateCheckFailed">Could not check for updates</string>
+    <string name="OEUpdateButtonDownloading">Downloading</string>
+    <string name="OEUpdateButtonReady">Tap to update</string>
+    <string name="OEUpdateBackgroundInfo">The download continues in the background, so you can leave this screen.</string>
     <string name="OEUserLookupTitle">Starting @usinfobot</string>
     <string name="OEUserLookupStart">Finding a user by ID requires **@usinfobot**. It only works once started, so we\'ll send it /start. A chat with it will appear in your chat list.</string>
     <string name="OEUserLookupStartButton">Start</string>

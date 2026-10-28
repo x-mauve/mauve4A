@@ -181,6 +181,9 @@
     <string name="OEUpdateDownloading">Загрузка обновления</string>
     <string name="OEUpdateDownloadFailed">Не удалось скачать обновление</string>
     <string name="OEUpdateCheckFailed">Не удалось проверить обновления</string>
+    <string name="OEUpdateButtonDownloading">Загрузка</string>
+    <string name="OEUpdateButtonReady">Нажмите, чтобы обновить</string>
+    <string name="OEUpdateBackgroundInfo">Загрузка идёт в фоне, можно выйти из этого меню.</string>
     <string name="OEUserLookupTitle">Запуск @usinfobot</string>
     <string name="OEUserLookupStart">Чтобы найти пользователя по ID, нужен бот **@usinfobot**. Он работает только после запуска, поэтому мы отправим ему /start. В списке чатов появится чат с ним.</string>
     <string name="OEUserLookupStartButton">Запустить</string>

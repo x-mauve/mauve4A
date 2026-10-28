@@ -20,6 +20,9 @@ import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import org.telegram.utils.settings.SharedSettings;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 
+import app.exteraless.updater.GitHubUpdater;
+import org.telegram.ui.Components.BulletinFactory;
+
 /**
  * Корневой экран раздела exteraless.
  * Структура повторяет настройки exteraGram: About-шапка + категории с иконками.
@@ -226,9 +229,28 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         }
     }
 
-    private class ListAdapter extends BaseListAdapter {
+    /**
+     * Header pill tap. The state decides what happens; the bulletin needs this
+     * fragment as host, which the cell itself does not have.
+     */
+    private void onUpdateHeaderClicked() {
+        int state = GitHubUpdater.getState();
+        if (state == GitHubUpdater.STATE_AVAILABLE) {
+            GitHubUpdater.Release release = GitHubUpdater.getAvailable();
+            if (release != null) {
+                GitHubUpdater.download(release, false, null);
+                BulletinFactory.of(this).createSimpleBulletin(R.raw.download_arrow,
+                        getString(R.string.OEUpdateDownloading),
+                        getString(R.string.OEUpdateBackgroundInfo)).show();
+            }
+        } else if (state == GitHubUpdater.STATE_DOWNLOADING) {
+            GitHubUpdater.cancelDownload();
+        } else if (state == GitHubUpdater.STATE_READY) {
+            GitHubUpdater.installReady(getParentActivity(), getResourceProvider());
+        }
+    }
 
-        public ListAdapter(Context context) {
+    private class ListAdapter extends BaseListAdapter {        public ListAdapter(Context context) {
             super(context);
         }
 
@@ -237,6 +259,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             if (viewType == TYPE_ABOUT) {
                 AboutHeaderCell view = new AboutHeaderCell(mContext);
                 view.setOnLogoClickListener(v -> showDialog(new app.exteraless.updater.UpdaterSheet(OpenExteraSettingsActivity.this)));
+                view.setUpdateDelegate(OpenExteraSettingsActivity.this::onUpdateHeaderClicked);
                 // У экстеры шапка лежит на фоне окна, а не в карточке-секции.
                 view.setTag(RecyclerListView.TAG_NOT_SECTION);
                 view.setLayoutParams(new RecyclerView.LayoutParams(

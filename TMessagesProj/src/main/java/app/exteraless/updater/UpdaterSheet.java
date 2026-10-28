@@ -250,7 +250,7 @@ public class UpdaterSheet extends BottomSheet {
         }
     }
 
-    private void onSharedState(int sharedState, long done, long total) {
+    private void onSharedState(int sharedState, GitHubUpdater.Release release, long done, long total) {
         if (dismissed) {
             return;
         }
@@ -494,7 +494,7 @@ public class UpdaterSheet extends BottomSheet {
             if (downloading) {
                 GitHubUpdater.cancelDownload();
             } else if (GitHubUpdater.getState() == GitHubUpdater.STATE_READY) {
-                GitHubUpdater.installReady(fragment.getParentActivity(), getResourceProvider());
+                GitHubUpdater.installReady(fragment.getParentActivity(), resourcesProvider);
             } else {
                 startDownload();
             }
@@ -529,7 +529,7 @@ public class UpdaterSheet extends BottomSheet {
                     return;
                 }
                 if (success) {
-                    GitHubUpdater.installReady(fragment.getParentActivity(), getResourceProvider());
+                    GitHubUpdater.installReady(fragment.getParentActivity(), resourcesProvider);
                     dismiss();
                     return;
                 }

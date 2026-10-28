@@ -14,6 +14,8 @@ import android.widget.TextView;
 
 import app.exteraless.icons.IconPacksConfig;
 import app.exteraless.icons.IconShapeHelper;
+import app.exteraless.updater.GitHubUpdater;
+import app.exteraless.updater.UpdateButton;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -41,6 +43,10 @@ public class AboutHeaderCell extends LinearLayout {
     /** Путь формы логотипа. Считается один раз, сбрасывается при смене режима. */
     private Path shapePath;
     private final ImageView logo;
+    private UpdateButton updateButton;
+    private TextView versionView;
+    private GitHubUpdater.StateListener stateListener;
+    private int versionBottomMargin;
 
     private Path shapePath() {
         if (shapePath == null) {
@@ -95,8 +101,50 @@ public class AboutHeaderCell extends LinearLayout {
         version.setGravity(Gravity.CENTER);
         version.setLineSpacing(AndroidUtilities.dp(2), 1f);
         version.setText(buildVersionString());
+        versionView = version;
+        versionBottomMargin = 28;
         addView(version, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT,
-                Gravity.TOP | Gravity.CENTER_HORIZONTAL, 60, 2, 60, 28));
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL, 60, 2, 60, versionBottomMargin));
+
+        // Pill under the version line; while it is visible the header's 28dp
+        // bottom margin moves onto it, otherwise version keeps the margin
+        updateButton = new UpdateButton(context);
+        addView(updateButton, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 40,
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 14, 0, 28));
+    }
+
+    /** Routed from OpenExteraSettingsActivity: the cell has no fragment reference. */
+    public interface UpdateDelegate {
+        void onUpdateClicked();
+    }
+
+    private UpdateDelegate updateDelegate;
+
+    public void setUpdateDelegate(UpdateDelegate delegate) {
+        updateDelegate = delegate;
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        stateListener = (state, release, done, total) -> {
+            boolean visible = state != GitHubUpdater.STATE_NONE;
+            updateButton.setState(state, release, done, total, true);
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) versionView.getLayoutParams();
+            lp.bottomMargin = visible ? 0 : versionBottomMargin;
+            versionView.setLayoutParams(lp);
+        };
+        GitHubUpdater.addListener(stateListener);
+        GitHubUpdater.refreshQuietly();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (stateListener != null) {
+            GitHubUpdater.removeListener(stateListener);
+            stateListener = null;
+        }
     }
 
     public void setOnLogoClickListener(OnClickListener listener) {
