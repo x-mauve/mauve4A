@@ -225,48 +225,42 @@ public class UpdaterSheet extends BottomSheet {
         setCustomView(content);
         updateChannel();
         check();
-        syncWithSharedState();
+        // Called right away with the current state, so a running download or a
+        // downloaded APK shows up before the check finishes
         GitHubUpdater.addListener(stateListener);
     }
 
     /**
-     * A download can be running or the APK may be ready already, regardless of what
-     * this sheet's own check returned: follow the shared updater state.
+     * Follows the shared updater state: a download or a ready APK started anywhere
+     * (header button, popup, this sheet) wins over this sheet's own check.
      */
-    private void syncWithSharedState() {
-        int shared = GitHubUpdater.getState();
-        if (shared == GitHubUpdater.STATE_DOWNLOADING) {
-            if (release == null) {
-                release = GitHubUpdater.getAvailable();
-            }
-            downloading = true;
-            progressView.setProgress(0, false);
-            setState(STATE_AVAILABLE);
-        } else if (shared == GitHubUpdater.STATE_READY && (state == STATE_LATEST || state == STATE_FAILED)) {
-            if (release == null) {
-                release = GitHubUpdater.getAvailable();
-            }
-            setState(STATE_AVAILABLE);
-        }
-    }
-
-    private void onSharedState(int sharedState, GitHubUpdater.Release release, long done, long total) {
+    private void onSharedState(int shared, GitHubUpdater.Release sharedRelease, long done, long total) {
         if (dismissed) {
             return;
         }
-        if (sharedState == GitHubUpdater.STATE_DOWNLOADING) {
-            if (!downloading) {
-                if (release == null) {
-                    release = GitHubUpdater.getAvailable();
-                }
-                downloading = true;
+        if (shared == GitHubUpdater.STATE_DOWNLOADING || shared == GitHubUpdater.STATE_READY) {
+            if (sharedRelease != null) {
+                release = sharedRelease;
+            }
+            boolean wasDownloading = downloading;
+            downloading = shared == GitHubUpdater.STATE_DOWNLOADING;
+            if (downloading && !wasDownloading) {
+                progressView.setProgress(0, false);
+            }
+            if (state != STATE_AVAILABLE || wasDownloading != downloading) {
                 setState(STATE_AVAILABLE);
             }
-            if (total > 0) {
+            if (downloading && total > 0) {
                 progressView.setProgress(done / (float) total, true);
                 statusSubtitle.setText(LocaleController.formatString(R.string.OEUpdateDownloadProgress,
                         AndroidUtilities.formatFileSize(done), AndroidUtilities.formatFileSize(total)));
             }
+        } else if (downloading) {
+            // Canceled or failed, possibly from the header button
+            downloading = false;
+            animateLayout();
+            statusSubtitle.setText(releaseDetails());
+            updateAction();
         }
     }
 
@@ -360,14 +354,12 @@ public class UpdaterSheet extends BottomSheet {
             if (dismissed || id != requestId) {
                 return;
             }
-            release = found;
-            // An active download from elsewhere overrides the plain check result
-            if (found == null || GitHubUpdater.isDownloading() || GitHubUpdater.getState() == GitHubUpdater.STATE_READY) {
-                if (release == null) {
-                    release = GitHubUpdater.getAvailable();
-                }
+            int shared = GitHubUpdater.getState();
+            if (shared == GitHubUpdater.STATE_DOWNLOADING || shared == GitHubUpdater.STATE_READY) {
+                // onSharedState already shows the download or the ready APK
                 return;
             }
+            release = found;
             if (failed) {
                 setState(STATE_FAILED);
             } else if (found != null && Boolean.TRUE.equals(newer)) {
@@ -507,35 +499,18 @@ public class UpdaterSheet extends BottomSheet {
         if (release == null || GitHubUpdater.isDownloading()) {
             return;
         }
-        downloading = true;
-        progressView.setProgress(0, false);
-        animateLayout();
-        updateAction();
+        // Progress, cancel and failure arrive through onSharedState
         GitHubUpdater.download(release, false, new GitHubUpdater.DownloadListener() {
             @Override
             public void onProgress(long done, long total) {
-                if (dismissed || total <= 0) {
-                    return;
-                }
-                progressView.setProgress(done / (float) total, true);
-                statusSubtitle.setText(LocaleController.formatString(R.string.OEUpdateDownloadProgress,
-                        AndroidUtilities.formatFileSize(done), AndroidUtilities.formatFileSize(total)));
             }
 
             @Override
             public void onFinished(boolean success, boolean canceled) {
-                downloading = false;
-                if (dismissed) {
-                    return;
-                }
-                if (success) {
+                if (success && !dismissed) {
                     GitHubUpdater.installReady(fragment.getParentActivity(), resourcesProvider);
                     dismiss();
-                    return;
                 }
-                animateLayout();
-                statusSubtitle.setText(releaseDetails());
-                updateAction();
             }
         });
     }
