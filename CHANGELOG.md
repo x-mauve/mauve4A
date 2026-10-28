@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Badges:** the mauve User badge menu now lists "Aether Integration"
+  (native integration with the Aether bot) instead of "Safe Plugins", and
+  "Useful and Powerful Features" instead of "Deep Customization", with
+  matching descriptions.
+
 ## [0.1.0] - 2026-10-27
 
 ### Changed

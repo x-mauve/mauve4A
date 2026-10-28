@@ -88,10 +88,10 @@
     <string name="ExtraBadgeLearnMore">Подробнее</string>
     <string name="ClientMarkSheetTitle">Пользователь mauve</string>
     <string name="ClientMarkSheetSubtitle">Эта отметка значит, что человек пользуется mauve — клиентом Telegram с открытым исходным кодом.</string>
-    <string name="ClientMarkSheetPluginsTitle">Безопасные плагины</string>
-    <string name="ClientMarkSheetPluginsText">mauve запускает Python-плагины с системой разрешений, поэтому каждый плагин получает только тот доступ, который вы разрешили.</string>
-    <string name="ClientMarkSheetCustomizeTitle">Гибкая настройка</string>
-    <string name="ClientMarkSheetCustomizeText">Темы, иконки, шрифты и раскладку можно настроить под себя.</string>
+    <string name="ClientMarkSheetPluginsTitle">Интеграция с Aether</string>
+    <string name="ClientMarkSheetPluginsText">В mauve встроена нативная интеграция с Aether — её возможности работают прямо в клиенте.</string>
+    <string name="ClientMarkSheetCustomizeTitle">Полезные и мощные функции</string>
+    <string name="ClientMarkSheetCustomizeText">Отобранные вручную твики и утилиты, которые делают ежедневное общение по-настоящему удобнее.</string>
     <string name="ClientMarkSheetDownloadTitle">Бесплатно и открыто</string>
     <string name="ClientMarkSheetDownloadText">Приложение бесплатное, а его код открыт: любой может его проверить или присоединиться к разработке.</string>
     <string name="ClientMarkBulletinText">Отметка показывается автоматически у тех, кто пользуется приложением mauve.</string>
