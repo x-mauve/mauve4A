@@ -568,6 +568,17 @@ public final class GitHubUpdater {
         if (release == null || isDownloading()) {
             return;
         }
+        if (TextUtils.isEmpty(release.apkUrl)) {
+            // Restored from a ready APK that has since disappeared: there is no URL,
+            // so look the release up again instead
+            available = null;
+            notifyState();
+            fetchQuiet();
+            if (listener != null) {
+                listener.onFinished(false, false);
+            }
+            return;
+        }
         File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), "updates");
         if (!dir.exists() && !dir.mkdirs()) {
             progressDone = progressTotal = 0;
