@@ -30,6 +30,7 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,9 +56,23 @@ public final class GitHubUpdater {
     // A preview comes before an rc, and both come before the final release
     private static final int STAGE_PREVIEW = 0, STAGE_RC = 1, STAGE_FINAL = 2;
 
+    public static final int STATE_NONE = 0, STATE_AVAILABLE = 1, STATE_DOWNLOADING = 2, STATE_READY = 3;
+
+    /** UI thread callback for anyone showing the shared updater state. */
+    public interface StateListener {
+        void onUpdateStateChanged(int state, Release release, long done, long total);
+    }
+
     private static volatile OkHttpClient client;
     private static volatile boolean checking;
     private static volatile Call download;
+
+    // Shared state: the update pill in settings and both sheets subscribe to it.
+    private static Release available; // last release that is newer than the installed one
+    private static File readyFile; // downloaded APK for `available`
+    private static long progressDone, progressTotal;
+    private static final CopyOnWriteArrayList<StateListener> listeners = new CopyOnWriteArrayList<>();
+    private static volatile long lastQuietFetch;
 
     private GitHubUpdater() {
     }
@@ -151,8 +166,29 @@ public final class GitHubUpdater {
             final Release found = release;
             final Boolean isNewer = newer;
             final boolean error = failed;
-            AndroidUtilities.runOnUIThread(() -> callback.onChecked(found, isNewer, error));
+            AndroidUtilities.runOnUIThread(() -> {
+                applyFetchResult(found, isNewer);
+                callback.onChecked(found, isNewer, error);
+            });
         }, "gh-updater").start();
+    }
+
+    /** Feed every check result into the shared state, whoever requested it. */
+    private static void applyFetchResult(Release found, Boolean isNewer) {
+        if (found != null && Boolean.TRUE.equals(isNewer)) {
+            available = found;
+        } else if (found != null && Boolean.FALSE.equals(isNewer)) {
+            // The fetched release matches the installed version: drop cached state,
+            // but keep a ready APK for that same release.
+            boolean keepReady = readyFile != null && found.apkName != null
+                    && found.apkName.equals(readyFile.getName());
+            available = keepReady ? found : null;
+            if (!keepReady && readyFile != null) {
+                readyFile.delete();
+                readyFile = null;
+            }
+        }
+        notifyState();
     }
 
     public static long lastCheck() {
@@ -161,6 +197,79 @@ public final class GitHubUpdater {
 
     public static boolean isDownloading() {
         return download != null;
+    }
+
+    public static int getState() {
+        if (isDownloading()) {
+            return STATE_DOWNLOADING;
+        }
+        if (readyFile != null && readyFile.exists()) {
+            return STATE_READY;
+        }
+        return available != null ? STATE_AVAILABLE : STATE_NONE;
+    }
+
+    public static Release getAvailable() {
+        return available;
+    }
+
+    public static long getProgressDone() {
+        return progressDone;
+    }
+
+    public static long getProgressTotal() {
+        return progressTotal;
+    }
+
+    public static void addListener(StateListener listener) {
+        if (listener != null && !listeners.contains(listener)) {
+            listeners.add(listener);
+            listener.onUpdateStateChanged(getState(), available, progressDone, progressTotal);
+        }
+    }
+
+    public static void removeListener(StateListener listener) {
+        listeners.remove(listener);
+    }
+
+    private static void notifyState() {
+        final int state = getState();
+        final Release release = available;
+        final long done = progressDone, total = progressTotal;
+        for (StateListener listener : listeners) {
+            listener.onUpdateStateChanged(state, release, done, total);
+        }
+    }
+
+    /**
+     * Silent fetch used by the settings header when the on-screen cache is empty.
+     * Rate-limited so scrolling back and forth does not burn the GitHub API budget.
+     */
+    public static void refreshQuietly() {
+        int channel = NaConfig.INSTANCE.getAutoUpdateChannel().Int();
+        if (available != null || channel == UpdateHelper.UPDATE_OFF || checking || isDownloading()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastQuietFetch < TimeUnit.MINUTES.toMillis(5)) {
+            return;
+        }
+        lastQuietFetch = now;
+        fetchQuiet();
+    }
+
+    private static void fetchQuiet() {
+        if (checking) {
+            return;
+        }
+        checking = true;
+        fetch((found, isNewer, failed) -> {
+            checking = false;
+            if (found != null && Boolean.TRUE.equals(isNewer)) {
+                available = found;
+                notifyState();
+            }
+        });
     }
 
     public static void cancelDownload() {
@@ -372,13 +481,27 @@ public final class GitHubUpdater {
     }
 
     public static void download(Activity activity, Release release, DownloadListener listener) {
-        if (download != null) {
+        download(release, true, listener);
+    }
+
+    /**
+     * Background download, not tied to any screen: the APK is persisted and the
+     * shared state is updated on the UI thread, so any listener can follow along.
+     * When {@code installWhenDone} is set, the installer is launched on success;
+     * otherwise the state stays READY.
+     */
+    public static void download(Release release, boolean installWhenDone, DownloadListener listener) {
+        if (release == null || isDownloading()) {
             return;
         }
-        File dir = new File(activity.getCacheDir(), "updates");
+        File dir = new File(ApplicationLoader.applicationContext.getCacheDir(), "updates");
         if (!dir.exists() && !dir.mkdirs()) {
+            progressDone = progressTotal = 0;
+            notifyState();
             bulletin(LocaleController.getString(R.string.OEUpdateDownloadFailed), true);
-            listener.onFinished(false, false);
+            if (listener != null) {
+                listener.onFinished(false, false);
+            }
             return;
         }
         File[] old = dir.listFiles();
@@ -391,14 +514,19 @@ public final class GitHubUpdater {
         Call call = client().newCall(new Request.Builder().url(release.apkUrl)
                 .header("User-Agent", "exteraless").build());
         download = call;
+        progressDone = 0;
+        progressTotal = 0;
+        notifyState();
         new Thread(() -> {
             boolean ok = false;
+            long total = 0;
             try (Response response = call.execute()) {
                 ResponseBody body = response.body();
                 if (!response.isSuccessful() || body == null) {
                     throw new IllegalStateException("HTTP " + response.code());
                 }
-                long total = body.contentLength() > 0 ? body.contentLength() : release.apkSize;
+                total = body.contentLength() > 0 ? body.contentLength() : release.apkSize;
+                final long totalBytes = total;
                 try (InputStream input = body.byteStream(); OutputStream output = new FileOutputStream(target)) {
                     byte[] buffer = new byte[64 * 1024];
                     long done = 0;
@@ -407,12 +535,19 @@ public final class GitHubUpdater {
                     while ((read = input.read(buffer)) > 0) {
                         output.write(buffer, 0, read);
                         done += read;
-                        if (total > 0) {
-                            int percent = (int) (done * 100 / total);
+                        if (totalBytes > 0) {
+                            int percent = (int) (done * 100 / totalBytes);
                             if (percent != lastPercent) {
                                 lastPercent = percent;
                                 final long doneBytes = done;
-                                AndroidUtilities.runOnUIThread(() -> listener.onProgress(doneBytes, total));
+                                AndroidUtilities.runOnUIThread(() -> {
+                                    progressDone = doneBytes;
+                                    progressTotal = totalBytes;
+                                    notifyState();
+                                    if (listener != null) {
+                                        listener.onProgress(doneBytes, totalBytes);
+                                    }
+                                });
                             }
                         }
                     }
@@ -424,14 +559,33 @@ public final class GitHubUpdater {
                 }
             }
             final boolean success = ok;
+            final long totalBytes = total;
             AndroidUtilities.runOnUIThread(() -> {
                 download = null;
                 if (success) {
-                    listener.onFinished(true, false);
-                    install(activity, target);
+                    readyFile = target;
+                    available = release;
+                    progressDone = totalBytes;
+                    progressTotal = totalBytes;
+                    notifyState();
+                    if (listener != null) {
+                        listener.onFinished(true, false);
+                    }
+                    if (installWhenDone) {
+                        BaseFragment fragment = LaunchActivity.getSafeLastFragment();
+                        Activity activity = fragment == null ? null : fragment.getParentActivity();
+                        if (activity != null) {
+                            install(activity, target);
+                        }
+                    }
                 } else {
                     target.delete();
-                    listener.onFinished(false, call.isCanceled());
+                    readyFile = null;
+                    progressDone = progressTotal = 0;
+                    notifyState();
+                    if (listener != null) {
+                        listener.onFinished(false, call.isCanceled());
+                    }
                     if (!call.isCanceled()) {
                         bulletin(LocaleController.getString(R.string.OEUpdateDownloadFailed), true);
                     }
