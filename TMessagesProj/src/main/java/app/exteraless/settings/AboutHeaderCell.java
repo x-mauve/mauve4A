@@ -114,14 +114,8 @@ public class AboutHeaderCell extends LinearLayout {
     }
 
     /** Routed from OpenExteraSettingsActivity: the cell has no fragment reference. */
-    public interface UpdateDelegate {
-        void onUpdateClicked();
-    }
-
-    private UpdateDelegate updateDelegate;
-
-    public void setUpdateDelegate(UpdateDelegate delegate) {
-        updateDelegate = delegate;
+    public void setUpdateDelegate(UpdateButton.UpdateDelegate delegate) {
+        updateButton.setUpdateDelegate(delegate);
     }
 
     @Override
