@@ -296,11 +296,9 @@ public class UpdateButton extends View {
 
     private void drawProgress(Canvas canvas, int w, int h, float r) {
         float t = dp(2.5f);
-        // Only the straight part of the bottom edge
-        float left = r, right = w - r;
-        if (right <= left) {
-            return;
-        }
+        // Full width: the pill clip bends the line into the rounded ends, so it
+        // has no visible start or end
+        float left = 0, right = w;
         pillRect.set(0, 0, w, h);
         pillPath.reset();
         pillPath.addRoundRect(pillRect, r, r, Path.Direction.CW);
