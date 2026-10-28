@@ -526,7 +526,7 @@ public final class GitHubUpdater {
             @Override
             public void onUpdate(UpdateSheet sheet) {
                 sheet.setDownloading(true);
-                download(activity, release, new DownloadListener() {
+                download(release, false, new DownloadListener() {
                     @Override
                     public void onProgress(long done, long total) {
                         sheet.setProgress(done, total);
@@ -535,6 +535,9 @@ public final class GitHubUpdater {
                     @Override
                     public void onFinished(boolean success, boolean canceled) {
                         if (success) {
+                            if (!sheet.dismissedByUser) {
+                                installReady(activity, fragment == null ? null : fragment.getResourceProvider());
+                            }
                             sheet.finishDownload();
                         } else if (!canceled) {
                             sheet.setDownloading(false);
@@ -553,10 +556,6 @@ public final class GitHubUpdater {
                 cancelDownload();
             }
         }).show();
-    }
-
-    public static void download(Activity activity, Release release, DownloadListener listener) {
-        download(release, true, listener);
     }
 
     /**

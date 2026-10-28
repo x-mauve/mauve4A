@@ -3,7 +3,6 @@ package app.exteraless.updater;
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
-import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Path;
@@ -86,6 +85,7 @@ public class UpdaterSheet extends BottomSheet {
     private boolean downloading;
     private boolean dismissed;
     private GitHubUpdater.Release release;
+    private final GitHubUpdater.StateListener stateListener = this::onSharedState;
 
     public UpdaterSheet(BaseFragment fragment) {
         super(fragment.getParentActivity(), false, fragment.getResourceProvider());
@@ -225,6 +225,49 @@ public class UpdaterSheet extends BottomSheet {
         setCustomView(content);
         updateChannel();
         check();
+        syncWithSharedState();
+        GitHubUpdater.addListener(stateListener);
+    }
+
+    /**
+     * A download can be running or the APK may be ready already, regardless of what
+     * this sheet's own check returned: follow the shared updater state.
+     */
+    private void syncWithSharedState() {
+        int shared = GitHubUpdater.getState();
+        if (shared == GitHubUpdater.STATE_DOWNLOADING) {
+            if (release == null) {
+                release = GitHubUpdater.getAvailable();
+            }
+            downloading = true;
+            progressView.setProgress(0, false);
+            setState(STATE_AVAILABLE);
+        } else if (shared == GitHubUpdater.STATE_READY && (state == STATE_LATEST || state == STATE_FAILED)) {
+            if (release == null) {
+                release = GitHubUpdater.getAvailable();
+            }
+            setState(STATE_AVAILABLE);
+        }
+    }
+
+    private void onSharedState(int sharedState, long done, long total) {
+        if (dismissed) {
+            return;
+        }
+        if (sharedState == GitHubUpdater.STATE_DOWNLOADING) {
+            if (!downloading) {
+                if (release == null) {
+                    release = GitHubUpdater.getAvailable();
+                }
+                downloading = true;
+                setState(STATE_AVAILABLE);
+            }
+            if (total > 0) {
+                progressView.setProgress(done / (float) total, true);
+                statusSubtitle.setText(LocaleController.formatString(R.string.OEUpdateDownloadProgress,
+                        AndroidUtilities.formatFileSize(done), AndroidUtilities.formatFileSize(total)));
+            }
+        }
     }
 
     private View createLogo(Context context) {
@@ -318,6 +361,13 @@ public class UpdaterSheet extends BottomSheet {
                 return;
             }
             release = found;
+            // An active download from elsewhere overrides the plain check result
+            if (found == null || GitHubUpdater.isDownloading() || GitHubUpdater.getState() == GitHubUpdater.STATE_READY) {
+                if (release == null) {
+                    release = GitHubUpdater.getAvailable();
+                }
+                return;
+            }
             if (failed) {
                 setState(STATE_FAILED);
             } else if (found != null && Boolean.TRUE.equals(newer)) {
@@ -357,7 +407,9 @@ public class UpdaterSheet extends BottomSheet {
                 statusImage.setImageResource(R.drawable.msg_download);
                 iconColor = getThemedColor(Theme.key_featuredStickers_buttonText);
                 iconBackground = accent;
-                statusTitle.setText(LocaleController.formatString(R.string.OEUpdaterAvailable, release.displayVersion()));
+                statusTitle.setText(release != null
+                        ? LocaleController.formatString(R.string.OEUpdaterAvailable, release.displayVersion())
+                        : getString(R.string.OEUpdateTitle));
                 subtitle = releaseDetails();
                 break;
             case STATE_FAILED:
@@ -396,6 +448,9 @@ public class UpdaterSheet extends BottomSheet {
     }
 
     private CharSequence releaseDetails() {
+        if (release == null) {
+            return null;
+        }
         StringBuilder details = new StringBuilder();
         if (release.apkSize > 0) {
             details.append(AndroidUtilities.formatFileSize(release.apkSize));
@@ -420,10 +475,12 @@ public class UpdaterSheet extends BottomSheet {
         if (state == STATE_AVAILABLE) {
             if (downloading) {
                 actionButton.setText(getString(R.string.Cancel));
+            } else if (GitHubUpdater.getState() == GitHubUpdater.STATE_READY) {
+                actionButton.setText(getString(R.string.OEUpdateInstall));
+            } else if (release != null && release.apkSize > 0) {
+                actionButton.setText(LocaleController.formatString(R.string.OEUpdateInstallSize, AndroidUtilities.formatFileSize(release.apkSize)));
             } else {
-                actionButton.setText(release.apkSize > 0
-                        ? LocaleController.formatString(R.string.OEUpdateInstallSize, AndroidUtilities.formatFileSize(release.apkSize))
-                        : getString(R.string.OEUpdateInstall));
+                actionButton.setText(getString(R.string.OEUpdateInstall));
             }
         } else if (state == STATE_FAILED) {
             actionButton.setText(getString(R.string.TryAgain));
@@ -436,6 +493,8 @@ public class UpdaterSheet extends BottomSheet {
         if (state == STATE_AVAILABLE) {
             if (downloading) {
                 GitHubUpdater.cancelDownload();
+            } else if (GitHubUpdater.getState() == GitHubUpdater.STATE_READY) {
+                GitHubUpdater.installReady(fragment.getParentActivity(), getResourceProvider());
             } else {
                 startDownload();
             }
@@ -445,15 +504,14 @@ public class UpdaterSheet extends BottomSheet {
     }
 
     private void startDownload() {
-        Activity activity = fragment.getParentActivity();
-        if (activity == null || release == null || GitHubUpdater.isDownloading()) {
+        if (release == null || GitHubUpdater.isDownloading()) {
             return;
         }
         downloading = true;
         progressView.setProgress(0, false);
         animateLayout();
         updateAction();
-        GitHubUpdater.download(activity, release, new GitHubUpdater.DownloadListener() {
+        GitHubUpdater.download(release, false, new GitHubUpdater.DownloadListener() {
             @Override
             public void onProgress(long done, long total) {
                 if (dismissed || total <= 0) {
@@ -471,6 +529,7 @@ public class UpdaterSheet extends BottomSheet {
                     return;
                 }
                 if (success) {
+                    GitHubUpdater.installReady(fragment.getParentActivity(), getResourceProvider());
                     dismiss();
                     return;
                 }
@@ -484,9 +543,8 @@ public class UpdaterSheet extends BottomSheet {
     @Override
     public void dismiss() {
         dismissed = true;
-        if (downloading) {
-            GitHubUpdater.cancelDownload();
-        }
+        GitHubUpdater.removeListener(stateListener);
+        // Background downloads keep running after the sheet closes
         super.dismiss();
     }
 }

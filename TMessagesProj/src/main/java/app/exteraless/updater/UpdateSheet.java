@@ -54,6 +54,8 @@ public class UpdateSheet extends BottomSheet {
     private final LineProgressView progressView;
     private final String updateText;
     private boolean downloading;
+    /** Set once the user closed the popup; no auto-install afterward. */
+    public boolean dismissedByUser;
 
     public UpdateSheet(Context context, Theme.ResourcesProvider resourcesProvider, String title,
                        String subtitle, String notes, String updateText, Delegate delegate) {
@@ -189,6 +191,14 @@ public class UpdateSheet extends BottomSheet {
         progressView.setProgress(0, false);
         skipButton.setVisibility(value ? View.GONE : View.VISIBLE);
         secondaryButton.setText(getString(value ? R.string.Cancel : R.string.OEUpdateLater));
+        // While downloading the secondary button becomes Cancel: it stops the
+        // download, plain dismissal keeps the background download running
+        secondaryButton.setOnClickListener(v -> {
+            if (downloading && delegate != null) {
+                delegate.onCancelDownload();
+            }
+            dismiss();
+        });
         primaryButton.setText(value ? getString(R.string.OEUpdateDownloading) : updateText);
     }
 
@@ -206,9 +216,8 @@ public class UpdateSheet extends BottomSheet {
 
     @Override
     public void dismiss() {
-        if (downloading && delegate != null) {
-            delegate.onCancelDownload();
-        }
+        // Background downloads keep running after the sheet closes
+        dismissedByUser = true;
         downloading = false;
         super.dismiss();
     }
