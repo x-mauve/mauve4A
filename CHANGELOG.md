@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Updater:** the mauve settings header now shows a pill update button
+  under the version when a newer release is found: download runs in the
+  background, can be canceled or left and resumed, and the downloaded APK
+  is remembered across restarts until a newer version is installed.
+
 ### Changed
 
 - **Badges:** the mauve User badge menu now lists "Aether Integration"
