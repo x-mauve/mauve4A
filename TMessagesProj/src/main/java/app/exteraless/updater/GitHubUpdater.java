@@ -20,6 +20,8 @@ import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.LaunchActivity;
 
@@ -675,7 +677,45 @@ public final class GitHubUpdater {
         }, "gh-updater-download").start();
     }
 
+    /**
+     * Launch the system installer for a downloaded APK. Shows the standard
+     * "unknown sources" dialog when the permission is missing, the state stays READY.
+     */
+    public static void installReady(Activity activity, Theme.ResourcesProvider resourcesProvider) {
+        ensureLoaded();
+        File file = readyFile;
+        if (file == null || !file.exists()) {
+            readyFile = null;
+            readyTag = null;
+            removeReadyKeys();
+            notifyState();
+            bulletin(LocaleController.getString(R.string.OEUpdateDownloadFailed), true);
+            return;
+        }
+        if (!canRequestInstalls(activity, resourcesProvider)) {
+            return;
+        }
+        install(activity, file);
+    }
+
+    private static boolean canRequestInstalls(Activity activity, Theme.ResourcesProvider resourcesProvider) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                if (!activity.getPackageManager().canRequestPackageInstalls()) {
+                    AlertsCreator.createApkRestrictedDialog(activity, resourcesProvider).show();
+                    return false;
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        }
+        return true;
+    }
+
     private static void install(Activity activity, File file) {
+        if (!canRequestInstalls(activity, null)) {
+            return;
+        }
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
