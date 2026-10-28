@@ -250,7 +250,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         }
     }
 
-    private class ListAdapter extends BaseListAdapter {        public ListAdapter(Context context) {
+    private class ListAdapter extends BaseListAdapter {
+
+        public ListAdapter(Context context) {
             super(context);
         }
 
