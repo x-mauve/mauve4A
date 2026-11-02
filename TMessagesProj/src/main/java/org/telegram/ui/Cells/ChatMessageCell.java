@@ -1852,7 +1852,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private long currentNameBotVerificationId;
     private String nameStatusSlug;
     public AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable currentNameStatusDrawable;
+    public AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable currentNameMauveDrawable;
     public BadgeDTO currentNameExtraBadge;
+    private ExtraBadgesController.NameBadge currentNameBadge;
     public AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable currentNameEmojiStatusDrawable;
 
     private TLRPC.User currentForwardUser;
@@ -2372,7 +2374,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     private boolean checkNameStatusMotionEvent(MotionEvent event) {
-        if (!drawNameLayout || nameLayout == null || nameLayoutSelector == null || currentUser == null && currentChat == null || currentNameStatus == null || currentNameStatusDrawable == null) {
+        if (!drawNameLayout || nameLayout == null || nameLayoutSelector == null || currentUser == null && currentChat == null || currentNameStatus == null && currentNameExtraBadge == null || currentNameStatusDrawable == null && currentNameMauveDrawable == null) {
             nameStatusPressed = false;
             return false;
         }
@@ -2388,7 +2390,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 if (delegate != null) {
                     if (currentUser != null) {
                         TLRPC.Document document = null;
-                        if (currentNameStatusDrawable.getDrawable() instanceof AnimatedEmojiDrawable) {
+                        if (currentNameStatusDrawable != null && currentNameStatusDrawable.getDrawable() instanceof AnimatedEmojiDrawable) {
                             document = ((AnimatedEmojiDrawable) currentNameStatusDrawable.getDrawable()).getDocument();
                         }
                         delegate.didPressUserStatus(this, currentUser, document, nameStatusSlug);
@@ -6592,6 +6594,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if (currentNameStatusDrawable != null) {
             currentNameStatusDrawable.detach();
         }
+        if (currentNameMauveDrawable != null) {
+            currentNameMauveDrawable.detach();
+        }
         if (currentNameEmojiStatusDrawable != null) {
             currentNameEmojiStatusDrawable.detach();
         }
@@ -6721,6 +6726,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
         if (currentNameStatusDrawable != null) {
             currentNameStatusDrawable.attach();
+        }
+        if (currentNameMauveDrawable != null) {
+            currentNameMauveDrawable.attach();
         }
         if (currentNameEmojiStatusDrawable != null) {
             currentNameEmojiStatusDrawable.attach();
@@ -11588,6 +11596,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
             if (currentNameStatusDrawable != null) {
                 currentNameStatusDrawable.play();
+            }
+            if (currentNameMauveDrawable != null) {
+                currentNameMauveDrawable.play();
             }
             if (replyLine != null) {
                 replyLine.resetAnimation();
@@ -19465,6 +19476,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             }
 
             currentNameStatus = null;
+            currentNameBadge = null;
             nameStatusSlug = null;
             currentNameBotVerificationId = 0;
             if (messageObject.customName != null) {
@@ -19484,6 +19496,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } catch (Exception ignore) {}
             if (currentNameStatus != null && !viaBot) {
                 nameWidth -= dp(4 + 12 + 4);
+            }
+            if (currentNameBadge != null) {
+                nameWidth -= dp(4 + 16 + 4);
             }
             if (currentNameBotVerificationId != 0) {
                 nameWidth -= dp(4 + 12 + 4);
@@ -19537,6 +19552,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                         viaNameWidth += dp(4 + 20 + 4);
                         stringBuilder.setSpan(new DialogCell.FixedWidthSpan(dp(4 + 20 + 4)), nameStringFinal.length(), nameStringFinal.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     }
+                    if (currentNameBadge != null) {
+                        viaNameWidth += dp(4 + 16 + 4);
+                        stringBuilder.setSpan(new DialogCell.FixedWidthSpan(dp(4 + 16 + 4)), nameStringFinal.length(), nameStringFinal.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
                     stringBuilder.setSpan(viaSpan2 = new TypefaceSpan(AndroidUtilities.bold(), 0, color), nameStringFinal.length() + 2 + viaBotString.length(), stringBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     nameStringFinal = stringBuilder;
                 } else {
@@ -19569,6 +19588,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 }
                 if (currentNameStatus != null && !viaBot) {
                     nameWidth += dp(4 + 12 + 4);
+                }
+                if (currentNameBadge != null) {
+                    nameWidth += dp(4 + 16 + 4);
                 }
                 if (currentNameBotVerificationId != 0) {
                     nameWidth += dp(4 + 12 + 4);
@@ -19611,6 +19633,21 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     currentNameStatusDrawable.set((long) currentNameStatus, false);
                 } else if (currentNameStatus instanceof Drawable) {
                     currentNameStatusDrawable.set((Drawable) currentNameStatus, false);
+                }
+            }
+            if (currentNameMauveDrawable == null && currentNameBadge != null) {
+                currentNameMauveDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(this, true, dp(18));
+                if (attachedToWindow) {
+                    currentNameMauveDrawable.attach();
+                }
+            }
+            if (currentNameMauveDrawable != null) {
+                if (currentNameBadge == null) {
+                    currentNameMauveDrawable.set((Drawable) null, false);
+                } else if (currentNameBadge.badge != null) {
+                    currentNameMauveDrawable.set(currentNameBadge.badge.getDocumentId(), false);
+                } else {
+                    currentNameMauveDrawable.set(ExtraBadgesController.getClientMarkDrawable(dp(16)), false);
                 }
             }
             if (currentNameEmojiStatusDrawable == null && currentNameBotVerificationId != 0) {
@@ -20358,13 +20395,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     private Object getAuthorStatus() {
         currentNameExtraBadge = null;
-        if (currentUser != null) {
-            // The extraBadges badge only takes the slot of users without Premium
-            BadgeDTO extraBadge = ExtraBadgesController.getChatBadge(currentUser, currentAccount);
-            if (extraBadge != null) {
-                currentNameExtraBadge = extraBadge;
-                return extraBadge.getDocumentId();
-            }
+        currentNameBadge = currentUser != null ? ExtraBadgesController.getNameBadge(currentUser) : null;
+        if (currentNameBadge != null && currentNameBadge.badge != null) {
+            currentNameExtraBadge = currentNameBadge.badge;
         }
         if (!NaConfig.INSTANCE.getPremiumItemEmojiStatus().Bool()) {
             return null;
@@ -21846,7 +21879,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             Choreographer60FpsContent.getInstance().removeFrameCallback(invalidateOutboundsRunnable);
         }
 
-        if ((currentNameStatusDrawable != null || currentNameEmojiStatusDrawable != null || topicButton != null && (drawTopic || transitionParams.animateDrawTopic)) && drawNameLayout && nameLayout != null && (currentPosition == null || currentPosition.minX == 0 && currentPosition.minY == 0) && !(currentMessageObject.deleted && !drawingToBitmap && currentMessagesGroup != null && currentMessagesGroup.messages.size() >= 1)) {
+        if ((currentNameStatusDrawable != null || currentNameMauveDrawable != null || currentNameEmojiStatusDrawable != null || topicButton != null && (drawTopic || transitionParams.animateDrawTopic)) && drawNameLayout && nameLayout != null && (currentPosition == null || currentPosition.minX == 0 && currentPosition.minY == 0) && !(currentMessageObject.deleted && !drawingToBitmap && currentMessagesGroup != null && currentMessagesGroup.messages.size() >= 1)) {
             int color;
             float nameX, nameY;
             if (currentMessageObject.shouldDrawWithoutBackground()) {
@@ -21955,6 +21988,17 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 );
                 currentNameStatusDrawable.setColor(ColorUtils.setAlphaComponent(color, 115));
                 currentNameStatusDrawable.draw(canvas);
+            }
+            if (currentNameMauveDrawable != null && !currentNameMauveDrawable.isEmpty()) {
+                final int mauveX = (int) (Math.abs(nx) + (viaNameWidth > 0 ? viaNameWidth - dp(4 + 28) : nameLayoutWidth) + dp(currentNameStatus != null ? 22 : 2));
+                currentNameMauveDrawable.setBounds(
+                    mauveX,
+                    (int) (ny + nameLayout.getHeight() / 2 - dp(9)),
+                    mauveX + dp(18),
+                    (int) (ny + nameLayout.getHeight() / 2 + dp(9))
+                );
+                currentNameMauveDrawable.setColor(ColorUtils.setAlphaComponent(color, 115));
+                currentNameMauveDrawable.draw(canvas);
             }
 
             float end;
@@ -22938,7 +22982,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 nameLayoutSelector.setAlpha((int) (0xFF * nameAlpha));
                 nameLayoutSelector.draw(canvas);
 
-                if (currentNameStatus != null) {
+                if (currentNameStatus != null || currentNameExtraBadge != null) {
                     if (nameStatusSelector == null) {
                         nameStatusSelector = Theme.createRadSelectorDrawable(nameStatusSelectorColor = selectorColor, 6, 6);
                         nameStatusSelector.setCallback(this);
@@ -22952,7 +22996,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     nameStatusSelector.setBounds(
                         (int) (nx + nameOffsetX + (viaNameWidth > 0 ? viaNameWidth - dp(4 + 28) : nameLayoutWidth)),
                         (int) (ny - dp(1.33f + 2 - starVerticalOffset)),
-                        (int) (nx + nameOffsetX + (viaNameWidth > 0 ? viaNameWidth - dp(4 + 28) : nameLayoutWidth) + dp(4 + 12 + 4 + 4 + starHorizontalOffset)),
+                        (int) (nx + nameOffsetX + (viaNameWidth > 0 ? viaNameWidth - dp(4 + 28) : nameLayoutWidth) + dp(4 + 12 + 4 + 4 + starHorizontalOffset) + (currentNameExtraBadge != null ? dp(22) : 0)),
                         (int) (ny + nameLayout.getHeight() + dp(1.33f + 2 - starVerticalOffset))
                     );
                     nameStatusSelector.setAlpha((int) (0xFF * nameAlpha));
