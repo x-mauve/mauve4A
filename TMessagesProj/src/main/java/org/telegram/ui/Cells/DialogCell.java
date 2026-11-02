@@ -4804,11 +4804,11 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 }
                 if (rightFragmentOpenedProgress > 0) {
                     nameBadgeDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
-                    nameBadgeDrawable.setBounds((int) x, y - dp(3), (int) x + dp(20), y + dp(17));
+                    nameBadgeDrawable.setBounds((int) x, y - dp(2), (int) x + dp(20), y + dp(18));
                     nameBadgeDrawable.draw(canvas);
                 } else {
                     nameBadgeView.setTranslationX(gtx + x);
-                    nameBadgeView.setTranslationY(gty + y - dp(3));
+                    nameBadgeView.setTranslationY(gty + y - dp(2));
                     nameBadgeVisible = true;
                 }
             }
