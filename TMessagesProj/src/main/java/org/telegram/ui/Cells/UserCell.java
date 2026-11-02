@@ -876,6 +876,7 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
         emojiStatus.attach();
         botVerification.attach();
+        extraBadge.attach();
     }
 
     @Override
@@ -884,6 +885,7 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.emojiLoaded);
         emojiStatus.detach();
         botVerification.detach();
+        extraBadge.detach();
         storyParams.onDetachFromWindow();
     }
 
