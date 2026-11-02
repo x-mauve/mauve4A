@@ -305,7 +305,6 @@ public class TableView extends TableLayout {
             }
         };
         updateStatus.run(null);
-        textView.setRightDrawable(emojiDrawable);
         NotificationCenter.getInstance(currentAccount).listen(textView, NotificationCenter.updateInterfaces, updateStatus);
         NotificationCenter.getInstance(currentAccount).listen(textView, NotificationCenter.userEmojiStatusUpdated, updateStatus);
         textView.setText(ssb);
