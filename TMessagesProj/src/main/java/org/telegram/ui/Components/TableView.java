@@ -51,6 +51,9 @@ import org.telegram.ui.Components.spoilers.SpoilersTextView;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.Stories.recorder.HintView2;
 
+import app.exteraless.badges.ExtraBadgesController;
+import app.exteraless.badges.NameIconPairDrawable;
+
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -243,6 +246,19 @@ public class TableView extends TableLayout {
                 emojiDrawable.detach();
             }
         });
+        final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable nameBadgeDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(textView, dp(18));
+        nameBadgeDrawable.setColor(color);
+        textView.addOnAttachStateChangeListener(new OnAttachStateChangeListener() {
+            @Override
+            public void onViewAttachedToWindow(@NonNull View v) {
+                nameBadgeDrawable.attach();
+            }
+
+            @Override
+            public void onViewDetachedFromWindow(@NonNull View v) {
+                nameBadgeDrawable.detach();
+            }
+        });
         final Drawable premiumDrawable = getContext().getResources().getDrawable(R.drawable.msg_premium_liststar).mutate();
         premiumDrawable.setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN));
         final Utilities.Callback<Object[]> updateStatus = args -> {
@@ -251,8 +267,9 @@ public class TableView extends TableLayout {
             }
             boolean isPremium;
             TLRPC.EmojiStatus emoji_status;
+            TLRPC.User user = null;
             if (did > 0) {
-                TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(did);
+                user = MessagesController.getInstance(currentAccount).getUser(did);
                 emoji_status = user != null ? user.emoji_status : null;
                 isPremium = user != null && user.premium;
             } else {
@@ -261,18 +278,31 @@ public class TableView extends TableLayout {
                 isPremium = false;
             }
             final long emojiStatusDocumentId2 = DialogObject.getEmojiStatusDocumentId(emoji_status);
-            if (emojiStatusDocumentId2 != 0) {
-                emojiDrawable.set(emojiStatusDocumentId2, true);
-                emojiDrawable.setParticles(DialogObject.isEmojiStatusCollectible(emoji_status), true);
-                textView.setRightDrawable(emojiDrawable);
-            } else if (isPremium) {
-                emojiDrawable.set(premiumDrawable, true);
-                emojiDrawable.setParticles(false, true);
+            if (emojiStatusDocumentId2 != 0 || isPremium) {
+                if (emojiStatusDocumentId2 != 0) {
+                    emojiDrawable.set(emojiStatusDocumentId2, true);
+                    emojiDrawable.setParticles(DialogObject.isEmojiStatusCollectible(emoji_status), true);
+                } else {
+                    emojiDrawable.set(premiumDrawable, true);
+                    emojiDrawable.setParticles(false, true);
+                }
                 textView.setRightDrawable(emojiDrawable);
             } else {
                 textView.setRightDrawable(null);
             }
             emojiDrawable.setColor(color);
+            ExtraBadgesController.NameBadge nameBadge = user != null ? ExtraBadgesController.getNameBadge(user) : null;
+            if (nameBadge != null) {
+                nameBadgeDrawable.setColor(color);
+                if (nameBadge.badge != null) {
+                    nameBadgeDrawable.set(nameBadge.badge.getDocumentId(), true);
+                } else {
+                    nameBadgeDrawable.set(ExtraBadgesController.getClientMarkDrawable(dp(16)), true);
+                }
+                textView.setRightDrawable(emojiDrawable.isEmpty() ? nameBadgeDrawable : new NameIconPairDrawable(emojiDrawable, nameBadgeDrawable, dp(3)));
+            } else {
+                nameBadgeDrawable.set((Drawable) null, true);
+            }
         };
         updateStatus.run(null);
         textView.setRightDrawable(emojiDrawable);

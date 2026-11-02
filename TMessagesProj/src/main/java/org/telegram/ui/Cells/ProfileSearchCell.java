@@ -142,6 +142,7 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
     private StaticLayout statusLayout;
     private AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable botVerificationDrawable;
     private AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable statusDrawable;
+    private AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable nameBadgeDrawable;
     public StoriesUtilities.AvatarStoryParams avatarStoryParams = new StoriesUtilities.AvatarStoryParams(false);
 
     private final RectF adBounds = new RectF();
@@ -176,6 +177,8 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
 
         statusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(this, dp(20));
         statusDrawable.setCallback(this);
+        nameBadgeDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(this, dp(18));
+        nameBadgeDrawable.setCallback(this);
         NotificationCenter.getGlobalInstance().listen(this, NotificationCenter.extraBadgesDidLoad, args -> {
             ArrayList<Long> ids = (ArrayList<Long>) args[0];
             if (user != null && ids.contains(user.id)) {
@@ -211,7 +214,7 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
 
     @Override
     protected boolean verifyDrawable(@NonNull Drawable who) {
-        return statusDrawable == who || botVerificationDrawable == who || super.verifyDrawable(who);
+        return statusDrawable == who || botVerificationDrawable == who || nameBadgeDrawable == who || super.verifyDrawable(who);
     }
 
     public void setAd(TLRPC.TL_sponsoredPeer sponsoredPeer) {
@@ -352,6 +355,7 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
         }
         statusDrawable.detach();
         botVerificationDrawable.detach();
+        nameBadgeDrawable.detach();
     }
 
     @Override
@@ -364,6 +368,7 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
         }
         statusDrawable.attach();
         botVerificationDrawable.attach();
+        nameBadgeDrawable.attach();
     }
 
     @Override
@@ -641,6 +646,9 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
                 nameWidth -= statusDrawable.getIntrinsicWidth();
             }
         }
+        if (!nameBadgeDrawable.isEmpty()) {
+            nameWidth -= nameBadgeDrawable.getIntrinsicWidth() + dp(3);
+        }
 
         if (nameWidth < 0) {
             nameWidth = 0;
@@ -813,13 +821,19 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
         } else if (allowEmojiStatus && user != null && !savedMessages && MessagesController.getInstance(currentAccount).isPremiumUser(user)) {
             statusDrawable.set(PremiumGradient.getInstance().premiumStarDrawableMini, animated);
             statusDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
-        } else if (allowEmojiStatus && !savedMessages && ExtraBadgesController.getChatBadge(user, currentAccount) != null) {
-            statusDrawable.set(ExtraBadgesController.getChatBadge(user, currentAccount).getDocumentId(), animated);
-            statusDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
         } else {
             statusDrawable.set((Drawable) null, animated);
             statusDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
         }
+        ExtraBadgesController.NameBadge nameBadge = allowEmojiStatus && !savedMessages && user != null ? ExtraBadgesController.getNameBadge(user) : null;
+        if (nameBadge == null) {
+            nameBadgeDrawable.set((Drawable) null, animated);
+        } else if (nameBadge.badge != null) {
+            nameBadgeDrawable.set(nameBadge.badge.getDocumentId(), animated);
+        } else {
+            nameBadgeDrawable.set(ExtraBadgesController.getClientMarkDrawable(dp(16)), animated);
+        }
+        nameBadgeDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
         long botVerificationIcon = 0;
         if (user != null) {
             botVerificationIcon = DialogObject.getBotVerificationIcon(user);
@@ -1024,6 +1038,16 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
             }
             setDrawableBounds(statusDrawable, x, nameTop + (nameLayout.getHeight() - statusDrawable.getIntrinsicHeight()) / 2f);
             statusDrawable.draw(canvas);
+
+            if (!nameBadgeDrawable.isEmpty()) {
+                if (LocaleController.isRTL) {
+                    x = (int) (nameLeft + nameWidth - Math.ceil(nameLayout.getLineWidth(0)) - dp(3) - statusDrawable.getIntrinsicWidth() - dp(3) - nameBadgeDrawable.getIntrinsicWidth());
+                } else {
+                    x = (int) (nameLeft + nameLayout.getLineRight(0) + dp(6) + statusDrawable.getIntrinsicWidth() + dp(3));
+                }
+                setDrawableBounds(nameBadgeDrawable, x, nameTop + (nameLayout.getHeight() - nameBadgeDrawable.getIntrinsicHeight()) / 2f);
+                nameBadgeDrawable.draw(canvas);
+            }
         }
 
         if (ad != null && adText != null && adBackgroundPaint != null) {

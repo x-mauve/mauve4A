@@ -38,8 +38,8 @@ import org.telegram.messenger.Emoji;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
-import com.exteragram.messenger.api.dto.BadgeDTO;
 import app.exteraless.badges.ExtraBadgesController;
+import app.exteraless.badges.NameIconPairDrawable;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
@@ -82,6 +82,7 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
     private Drawable premiumDrawable;
     private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable botVerification;
     private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable emojiStatus;
+    private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable extraBadge;
     private ImageView closeView;
     protected Theme.ResourcesProvider resourcesProvider;
     private ImageView mutualView;
@@ -203,6 +204,7 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
 
         botVerification = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView, dp(20));
         emojiStatus = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView, dp(20));
+        extraBadge = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView, dp(18));
         NotificationCenter.getGlobalInstance().listen(this, NotificationCenter.extraBadgesDidLoad, args -> {
             ArrayList<Long> ids = (ArrayList<Long>) args[0];
             if (currentObject instanceof TLRPC.User && ids.contains(((TLRPC.User) currentObject).id)) {
@@ -700,11 +702,12 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
             botVerification.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
             nameTextView.setLeftDrawable(botVerification);
         }
+        Drawable nameStatusDrawable = null;
         if (currentUser != null && MessagesController.getInstance(currentAccount).isPremiumUser(currentUser) && !MessagesController.getInstance(currentAccount).premiumFeaturesBlocked()) {
             if (DialogObject.getEmojiStatusDocumentId(currentUser.emoji_status) != 0) {
                 emojiStatus.set(DialogObject.getEmojiStatusDocumentId(currentUser.emoji_status), false);
                 emojiStatus.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
-                nameTextView.setRightDrawable(emojiStatus);
+                nameStatusDrawable = emojiStatus;
             } else {
                 if (premiumDrawable == null) {
                     premiumDrawable = getContext().getResources().getDrawable(R.drawable.msg_premium_liststar).mutate();
@@ -719,20 +722,25 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
                     };
                     premiumDrawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider), PorterDuff.Mode.MULTIPLY));
                 }
-                nameTextView.setRightDrawable(premiumDrawable);
+                nameStatusDrawable = premiumDrawable;
             }
             nameTextView.setRightDrawableTopPadding(-dp(0.5f));
         } else {
-            BadgeDTO extraBadge = ExtraBadgesController.getChatBadge(currentUser, currentAccount);
-            if (extraBadge != null) {
-                emojiStatus.set(extraBadge.getDocumentId(), false);
-                emojiStatus.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
-                nameTextView.setRightDrawable(emojiStatus);
-            } else {
-                nameTextView.setRightDrawable(null);
-            }
             nameTextView.setRightDrawableTopPadding(0);
         }
+        ExtraBadgesController.NameBadge nameBadge = currentUser != null ? ExtraBadgesController.getNameBadge(currentUser) : null;
+        if (nameBadge == null) {
+            extraBadge.set((Drawable) null, false);
+        } else {
+            extraBadge.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
+            if (nameBadge.badge != null) {
+                extraBadge.set(nameBadge.badge.getDocumentId(), false);
+            } else {
+                extraBadge.set(ExtraBadgesController.getClientMarkDrawable(dp(16)), false);
+            }
+            nameStatusDrawable = nameStatusDrawable == null ? extraBadge : new NameIconPairDrawable(nameStatusDrawable, extraBadge, dp(3));
+        }
+        nameTextView.setRightDrawable(nameStatusDrawable);
         if (currentStatus != null) {
             statusTextView.setTextColor(statusColor);
             CharSequence status = currentStatus;

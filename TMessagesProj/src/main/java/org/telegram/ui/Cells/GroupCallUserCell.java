@@ -41,6 +41,8 @@ import org.telegram.messenger.voip.VoIPService;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import app.exteraless.badges.ExtraBadgesController;
+import app.exteraless.badges.NameIconPairDrawable;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AvatarDrawable;
 import org.telegram.ui.Components.BackupImageView;
@@ -68,6 +70,7 @@ public class GroupCallUserCell extends FrameLayout {
 
     public final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable leftDrawable;
     public final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable rightDrawable;
+    private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable extraBadge;
     private Drawable verifiedDrawable;
     private Drawable premiumDrawable;
 
@@ -298,6 +301,7 @@ public class GroupCallUserCell extends FrameLayout {
         addView(nameTextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 20, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, LocaleController.isRTL ? 54 : 67, 10, LocaleController.isRTL ? 67 : 54, 0));
         leftDrawable =  new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView, AndroidUtilities.dp(20), AnimatedEmojiDrawable.CACHE_TYPE_ALERT_EMOJI_STATUS);
         rightDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView, AndroidUtilities.dp(20), AnimatedEmojiDrawable.CACHE_TYPE_ALERT_EMOJI_STATUS);
+        extraBadge = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameTextView, AndroidUtilities.dp(18), AnimatedEmojiDrawable.CACHE_TYPE_ALERT_EMOJI_STATUS);
 
         speakingDrawable = context.getResources().getDrawable(R.drawable.voice_volume_mini);
         speakingDrawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_voipgroup_speakingText), PorterDuff.Mode.MULTIPLY));
@@ -438,6 +442,9 @@ public class GroupCallUserCell extends FrameLayout {
         if (rightDrawable != null) {
             rightDrawable.detach();
         }
+        if (extraBadge != null) {
+            extraBadge.detach();
+        }
         if (leftDrawable != null) {
             leftDrawable.detach();
         }
@@ -501,7 +508,19 @@ public class GroupCallUserCell extends FrameLayout {
                 rightDrawable.set((Drawable) null, animated);
             }
             rightDrawable.setColor(Theme.getColor(Theme.key_premiumGradient1));
-            nameTextView.setRightDrawable(rightDrawable);
+            ExtraBadgesController.NameBadge nameBadge = ExtraBadgesController.getNameBadge(currentUser);
+            if (nameBadge == null) {
+                extraBadge.set((Drawable) null, animated);
+                nameTextView.setRightDrawable(rightDrawable);
+            } else {
+                extraBadge.setColor(Theme.getColor(Theme.key_premiumGradient1));
+                if (nameBadge.badge != null) {
+                    extraBadge.set(nameBadge.badge.getDocumentId(), animated);
+                } else {
+                    extraBadge.set(ExtraBadgesController.getClientMarkDrawable(AndroidUtilities.dp(16)), animated);
+                }
+                nameTextView.setRightDrawable(rightDrawable.isEmpty() ? extraBadge : new NameIconPairDrawable(rightDrawable, extraBadge, AndroidUtilities.dp(3)));
+            }
             avatarImageView.getImageReceiver().setCurrentAccount(account.getCurrentAccount());
             if (uploadingAvatar != null) {
                 hasAvatar = true;
@@ -559,6 +578,9 @@ public class GroupCallUserCell extends FrameLayout {
         applyParticipantChanges(false);
         if (rightDrawable != null) {
             rightDrawable.attach();
+        }
+        if (extraBadge != null) {
+            extraBadge.attach();
         }
         if (leftDrawable != null) {
             leftDrawable.attach();
