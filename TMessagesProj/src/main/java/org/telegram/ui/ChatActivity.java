@@ -21092,7 +21092,7 @@ public class ChatActivity extends BaseFragment implements
                 avatarContainer.setTitle(AndroidUtilities.removeRTL(AndroidUtilities.removeDiacritics(UserObject.getUserName(currentUser))), currentUser.scam, currentUser.fake, currentUser.verified, getMessagesController().isPremiumUser(currentUser), !MessagesController.isSupportUser(currentUser) ? currentUser.emoji_status : null, animated);
             }
             if (!currentUser.self) {
-                avatarContainer.setExtraBadge(ExtraBadgesController.getChatBadge(currentUser, currentAccount), animated);
+                avatarContainer.setExtraBadge(ExtraBadgesController.getNameBadge(currentUser), animated);
             }
         }
         setParentActivityTitle(avatarContainer.getTitleTextView().getText());

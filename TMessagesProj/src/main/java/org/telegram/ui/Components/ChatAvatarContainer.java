@@ -42,10 +42,11 @@ import androidx.core.content.ContextCompat;
 import com.radolyn.ayugram.utils.LastSeenHelper;
 
 import app.exteraless.appearance.ChatHeaderUiHelper;
+import app.exteraless.badges.ExtraBadgesController;
+import app.exteraless.badges.NameIconPairDrawable;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
-import com.exteragram.messenger.api.dto.BadgeDTO;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.Emoji;
@@ -142,6 +143,8 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
 
     private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable emojiStatusDrawable;
     private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable botVerificationDrawable;
+    private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable extraBadgeDrawable;
+    private Drawable titleStatusDrawable;
 
     protected boolean useAnimatedSubtitle() {
         return false;
@@ -471,6 +474,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
 
         emojiStatusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(titleTextView, dp(24));
         botVerificationDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(titleTextView, dp(17));
+        extraBadgeDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(titleTextView, dp(20));
     }
 
     public void setAvatarOptionsMenuItem(ActionBarMenuItem menuItem) {
@@ -1222,14 +1226,16 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
                 emojiStatusDrawable.set((Drawable) null, animated);
             }
             emojiStatusDrawable.setColor(getThemedColor(Theme.key_profile_verifiedBackground));
-            titleTextView.setRightDrawable(emojiStatusDrawable);
+            titleStatusDrawable = emojiStatusDrawable;
+            applyTitleRightDrawable();
             rightDrawableIsScamOrVerified = false;
             rightDrawableContentDescription = getString(R.string.AccDescrPremium);
             if (isCentered()) {
                 titleTextView.setRightDrawable2(null);
             }
         } else {
-            titleTextView.setRightDrawable(null);
+            titleStatusDrawable = null;
+            applyTitleRightDrawable();
             rightDrawableContentDescription = null;
         }
         checkActionBar(animated);
@@ -1237,15 +1243,28 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
 
     private Drawable emojiStatusDefaultDrawable;
 
-    /** Puts the extraBadges badge into the emoji status slot when that slot is free. */
-    public void setExtraBadge(BadgeDTO badge, boolean animated) {
-        if (badge == null || titleTextView.getRightDrawable() != null) {
-            return;
+    /** Adds the mauve icon after the status icon, or drops it when there is none. */
+    public void setExtraBadge(ExtraBadgesController.NameBadge badge, boolean animated) {
+        if (badge == null) {
+            extraBadgeDrawable.set((Drawable) null, animated);
+        } else if (badge.badge != null) {
+            extraBadgeDrawable.set(badge.badge.getDocumentId(), animated);
+            extraBadgeDrawable.setColor(getThemedColor(Theme.key_profile_verifiedBackground));
+            rightDrawableContentDescription = badge.badge.getText();
+        } else {
+            extraBadgeDrawable.set(ExtraBadgesController.getClientMarkDrawable(dp(18)), animated);
+            extraBadgeDrawable.setColor(getThemedColor(Theme.key_profile_verifiedBackground));
+            rightDrawableContentDescription = getString(R.string.OEProfileClientMark);
         }
-        emojiStatusDrawable.set(badge.getDocumentId(), animated);
-        emojiStatusDrawable.setColor(getThemedColor(Theme.key_profile_verifiedBackground));
-        titleTextView.setRightDrawable(emojiStatusDrawable);
-        rightDrawableContentDescription = badge.getText();
+        applyTitleRightDrawable();
+    }
+
+    private void applyTitleRightDrawable() {
+        Drawable right = titleStatusDrawable;
+        if (!extraBadgeDrawable.isEmpty()) {
+            right = right == null ? extraBadgeDrawable : new NameIconPairDrawable(right, extraBadgeDrawable, dp(3));
+        }
+        titleTextView.setRightDrawable(right);
     }
     private Drawable verifiedBackground;
     private Drawable verifiedCheck;
@@ -1802,6 +1821,9 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         if (botVerificationDrawable != null) {
             botVerificationDrawable.attach();
         }
+        if (extraBadgeDrawable != null) {
+            extraBadgeDrawable.attach();
+        }
         pushGlassAvatarRadius();
     }
 
@@ -1818,6 +1840,9 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         }
         if (botVerificationDrawable != null) {
             botVerificationDrawable.detach();
+        }
+        if (extraBadgeDrawable != null) {
+            extraBadgeDrawable.detach();
         }
     }
 
