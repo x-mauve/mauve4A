@@ -1,7 +1,10 @@
 package app.exteraless.badges;
 
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
+
+import androidx.core.content.ContextCompat;
 
 import com.exteragram.messenger.api.dto.BadgeDTO;
 import com.exteragram.messenger.api.model.ProfileStatus;
@@ -13,12 +16,12 @@ import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildConfig;
-import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.FileLog;
-import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.R;
 import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.ui.Components.AnimatedEmojiDrawable;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -112,19 +115,38 @@ public final class ExtraBadgesController {
         AndroidUtilities.runOnUIThread(ExtraBadgesController::flush, BATCH_DELAY);
     }
 
+    /** The one mauve icon to draw next to a name outside the profile. */
+    public static final class NameBadge {
+        /** Non-null for the unique badge; null when only the client mark applies. */
+        public final BadgeDTO badge;
+        public final boolean clientMark;
+
+        private NameBadge(BadgeDTO badge, boolean clientMark) {
+            this.badge = badge;
+            this.clientMark = clientMark;
+        }
+    }
+
     /**
-     * Returns the badge to draw next to a name outside the profile, or null.
-     * There the badge takes the emoji status slot, so it is shown only when the
-     * user has neither verification nor Premium.
+     * Returns the mauve icon to draw next to a name outside the profile, or null.
+     * The unique badge wins over the client mark.
      */
-    public static BadgeDTO getChatBadge(TLRPC.User user, int account) {
-        if (user == null || !isEnabled() || user.verified || user.scam || user.fake || UserObject.isUserSelf(user)
-                || DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0
-                || MessagesController.getInstance(account).isPremiumUser(user)) {
+    public static NameBadge getNameBadge(TLRPC.User user) {
+        if (user == null || user.verified || user.scam || user.fake || UserObject.isUserSelf(user) || !isEnabled()) {
             return null;
         }
         request(user.id);
-        return BadgesController.INSTANCE.getApiBadgeSource().getBadge(user.id, true);
+        BadgeDTO badge = BadgesController.INSTANCE.getApiBadgeSource().getBadge(user.id, true);
+        if (badge != null) {
+            return new NameBadge(badge, false);
+        }
+        return isClient(user.id) ? new NameBadge(null, true) : null;
+    }
+
+    /** The local client mark, drawn where a cell shows a single name icon. */
+    public static Drawable getClientMarkDrawable(int size) {
+        Drawable seal = ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_exteraless_seal).mutate();
+        return new AnimatedEmojiDrawable.WrapSizeDrawable(seal, size, size);
     }
 
     public static boolean isClient(long userId) {
