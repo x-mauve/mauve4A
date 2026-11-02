@@ -16,7 +16,9 @@ import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildConfig;
+import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserObject;
@@ -141,6 +143,17 @@ public final class ExtraBadgesController {
             return new NameBadge(badge, false);
         }
         return isClient(user.id) ? new NameBadge(null, true) : null;
+    }
+
+    /** The badge as the emoji status slot replacement; still used by cells not migrated yet. */
+    public static BadgeDTO getChatBadge(TLRPC.User user, int account) {
+        if (user == null || !isEnabled() || user.verified || user.scam || user.fake || UserObject.isUserSelf(user)
+                || DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0
+                || MessagesController.getInstance(account).isPremiumUser(user)) {
+            return null;
+        }
+        request(user.id);
+        return BadgesController.INSTANCE.getApiBadgeSource().getBadge(user.id, true);
     }
 
     /** The local client mark, drawn where a cell shows a single name icon. */

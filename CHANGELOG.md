@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Badges:** mauve badges now show next to names in the chat list, chats and
+  user lists, even for Premium users, and never take the emoji status slot
+  anymore. The client mark shows there too when there is no unique badge.
 - **Badges:** the mauve User badge menu now lists "Aether Integration"
   (native integration with the Aether bot) instead of "Safe Plugins", and
   "Useful and Powerful Features" instead of "Deep Customization", with

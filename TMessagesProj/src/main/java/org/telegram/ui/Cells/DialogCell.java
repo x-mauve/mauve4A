@@ -80,7 +80,6 @@ import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
-import com.exteragram.messenger.api.dto.BadgeDTO;
 import app.exteraless.badges.ExtraBadgesController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
@@ -660,11 +659,15 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     private boolean drawVerified;
     private boolean drawBotVerified;
     private boolean drawPremium;
-    private boolean drawExtraBadge;
+    private boolean drawNameBadge;
+    private ExtraBadgesController.NameBadge nameBadge;
     private final View emojiStatusView;
     private final View botVerificationView;
     private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable emojiStatus;
     private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable botVerification;
+    private final View nameBadgeView;
+    private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable nameBadgeDrawable;
+    private Drawable clientMarkDrawable;
 
     private int drawScam;
 
@@ -756,6 +759,15 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         };
         addView(botVerificationView);
         botVerification = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(botVerificationView, dp(17));
+        nameBadgeView = new View(context) {
+            @Override
+            protected void onDraw(@NonNull Canvas canvas) {
+                nameBadgeDrawable.setBounds(0, 0, getWidth(), getHeight());
+                nameBadgeDrawable.draw(canvas);
+            }
+        };
+        addView(nameBadgeView);
+        nameBadgeDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(nameBadgeView, dp(20));
         avatarImage.setAllowLoadingOnAttachedOnly(true);
         // openExtera: мини-аватарка отправителя в превью сообщения (AppearanceConfig.senderMiniAvatars)
         messageAvatarSpan = new AvatarSpan(this, currentAccount, 18.0f);
@@ -1007,6 +1019,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         if (botVerification != null) {
             botVerification.detach();
         }
+        if (nameBadgeDrawable != null) {
+            nameBadgeDrawable.detach();
+        }
         AnimatedEmojiSpan.release(this, animatedEmojiStack);
         AnimatedEmojiSpan.release(this, animatedEmojiStack2);
         AnimatedEmojiSpan.release(this, animatedEmojiStack3);
@@ -1033,6 +1048,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         if (botVerification != null) {
             botVerification.attach();
         }
+        if (nameBadgeDrawable != null) {
+            nameBadgeDrawable.attach();
+        }
     }
 
     public void resetPinnedArchiveState() {
@@ -1052,6 +1070,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         if (botVerification != null && attachedToWindow) {
             botVerification.attach();
         }
+        if (nameBadgeDrawable != null && attachedToWindow) {
+            nameBadgeDrawable.attach();
+        }
     }
 
     @Override
@@ -1066,6 +1087,12 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             botVerificationView.measure(
                 MeasureSpec.makeMeasureSpec(dp(17), MeasureSpec.EXACTLY),
                 MeasureSpec.makeMeasureSpec(dp(17), MeasureSpec.EXACTLY)
+            );
+        }
+        if (nameBadgeView != null) {
+            nameBadgeView.measure(
+                MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.EXACTLY)
             );
         }
         if (checkBox != null) {
@@ -1136,6 +1163,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         }
         if (botVerificationView != null) {
             botVerificationView.layout(0, 0, dp(17), dp(17));
+        }
+        if (nameBadgeView != null) {
+            nameBadgeView.layout(0, 0, dp(20), dp(20));
         }
         if (checkBox != null) {
             int paddingStart = dp(messagePaddingStart - (useForceThreeLines || SharedConfig.useThreeLinesLayout ? 29 : 27));
@@ -1375,7 +1405,8 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         drawVerified = false;
         drawBotVerified = false;
         drawPremium = false;
-        drawExtraBadge = false;
+        drawNameBadge = false;
+        nameBadge = null;
         drawForwardIcon = false;
         drawGiftIcon = false;
         drawScam = 0;
@@ -1603,17 +1634,20 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                                 emojiStatus.set(PremiumGradient.getInstance().premiumStarDrawableMini, false);
                                 emojiStatus.setParticles(false, false);
                             }
-                        } else {
-                            // The extraBadges badge borrows the free emoji status slot
-                            BadgeDTO extraBadge = ExtraBadgesController.getChatBadge(user, currentAccount);
-                            if (extraBadge != null) {
-                                drawPremium = true;
-                                drawExtraBadge = true;
-                                nameLayoutEllipsizeByGradient = true;
-                                emojiStatus.center = LocaleController.isRTL;
-                                emojiStatus.set(extraBadge.getDocumentId(), false);
-                                emojiStatus.setParticles(false, false);
+                        }
+                        nameBadge = ExtraBadgesController.getNameBadge(user);
+                        drawNameBadge = nameBadge != null;
+                        if (drawNameBadge) {
+                            nameBadgeDrawable.center = LocaleController.isRTL;
+                            if (nameBadge.badge != null) {
+                                nameBadgeDrawable.set(nameBadge.badge.getDocumentId(), false);
+                            } else {
+                                if (clientMarkDrawable == null) {
+                                    clientMarkDrawable = ExtraBadgesController.getClientMarkDrawable(dp(18));
+                                }
+                                nameBadgeDrawable.set(clientMarkDrawable, false);
                             }
+                            nameBadgeDrawable.setParticles(false, false);
                         }
                     }
                     if (dialogBotVerificationIcon != 0 && drawBotVerified) {
@@ -2473,6 +2507,14 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             }
         } else if (drawScam != 0) {
             int w = dp(6) + (drawScam == 1 ? Theme.dialogs_scamDrawable : Theme.dialogs_fakeDrawable).getIntrinsicWidth();
+            nameWidth -= w;
+            nameAdditionalsForChannelSubscriber += w;
+            if (LocaleController.isRTL) {
+                nameLeft += w;
+            }
+        }
+        if (drawNameBadge) {
+            int w = dp(2 + 20);
             nameWidth -= w;
             nameAdditionalsForChannelSubscriber += w;
             if (LocaleController.isRTL) {
@@ -3556,13 +3598,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 }
                 if ((mask & MessagesController.UPDATE_MASK_EMOJI_STATUS) != 0) {
                     long dialogBotVerificationIcon = 0;
-                    if (user != null && drawExtraBadge) {
-                        user = MessagesController.getInstance(currentAccount).getUser(user.id);
-                        if (user != null && (DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0 || MessagesController.getInstance(currentAccount).isPremiumUser(user))) {
-                            // The user got Premium, so the badge gives the slot back on the next rebuild
-                            continueUpdate = true;
-                        }
-                    } else if (user != null) {
+                    if (user != null) {
                         user = MessagesController.getInstance(currentAccount).getUser(user.id);
                         if (user != null && DialogObject.getEmojiStatusDocumentId(user.emoji_status) != 0) {
                             nameLayoutEllipsizeByGradient = true;
@@ -4019,12 +4055,14 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
             emojiStatusView.setVisibility(View.INVISIBLE);
             botVerificationView.setVisibility(View.INVISIBLE);
+            nameBadgeView.setVisibility(View.INVISIBLE);
             return;
         }
 
         float gtx = 0, gty = 0;
         boolean emojiStatusVisible = false;
         boolean botVerificationVisible = false;
+        boolean nameBadgeVisible = false;
 
         final boolean clipArchive = drawArchive && (currentDialogFolderId != 0 || isTopic && forumTopic != null && forumTopic.id == 1) && archivedChatsDrawable != null && translationX == 0.0f && parentFragment != null && parentFragment.hasHiddenArchive()
             && (parentFragment.rightSlidingDialogContainer == null || !parentFragment.rightSlidingDialogContainer.hasFragment());
@@ -4668,6 +4706,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                     }
                 }
                 int muteAnchor = drawPremium ? nameMutedIconLeft : nameMuteLeft;
+                if (drawNameBadge) {
+                    muteAnchor += LocaleController.isRTL ? -dp(22) : dp(22);
+                }
                 float muteX = muteAnchor - dp(useForceThreeLines || SharedConfig.useThreeLinesLayout ? 0 : 1);
                 float muteY = dp(SharedConfig.useThreeLinesLayout ? 13.5f : 17.5f);
                 if ((!(useForceThreeLines || SharedConfig.useThreeLinesLayout) || isForumCell()) && hasTags()) {
@@ -4748,6 +4789,28 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 }
                 setDrawableBounds((drawScam == 1 ? Theme.dialogs_scamDrawable : Theme.dialogs_fakeDrawable), nameMuteLeft, y);
                 (drawScam == 1 ? Theme.dialogs_scamDrawable : Theme.dialogs_fakeDrawable).draw(canvas);
+            }
+
+            if (drawNameBadge) {
+                int y = dp(useForceThreeLines || SharedConfig.useThreeLinesLayout ? 12.5f : 15.5f);
+                if ((!(useForceThreeLines || SharedConfig.useThreeLinesLayout) || isForumCell()) && hasTags()) {
+                    y -= dp(9);
+                }
+                float x;
+                if (LocaleController.isRTL) {
+                    x = drawPremium ? nameMuteLeft - dp(24) : nameMuteLeft;
+                } else {
+                    x = drawPremium ? nameMutedIconLeft : nameMuteLeft;
+                }
+                if (rightFragmentOpenedProgress > 0) {
+                    nameBadgeDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
+                    nameBadgeDrawable.setBounds((int) x, y - dp(3), (int) x + dp(20), y + dp(17));
+                    nameBadgeDrawable.draw(canvas);
+                } else {
+                    nameBadgeView.setTranslationX(gtx + x);
+                    nameBadgeView.setTranslationY(gty + y - dp(3));
+                    nameBadgeVisible = true;
+                }
             }
 
             if (drawReorder || reorderIconProgress != 0) {
@@ -5168,6 +5231,10 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
         emojiStatusView.setVisibility(emojiStatusVisible ? View.VISIBLE : View.INVISIBLE);
         botVerificationView.setVisibility(botVerificationVisible ? View.VISIBLE : View.INVISIBLE);
+        nameBadgeView.setVisibility(nameBadgeVisible ? View.VISIBLE : View.INVISIBLE);
+        if (nameBadgeVisible) {
+            nameBadgeDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
+        }
 
         if (needInvalidate) {
             invalidate();
