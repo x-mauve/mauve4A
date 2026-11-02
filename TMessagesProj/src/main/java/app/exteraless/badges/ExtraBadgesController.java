@@ -170,9 +170,11 @@ public final class ExtraBadgesController {
 
     /** Forgets every loaded badge and mark, e.g. after badges were turned off. */
     public static void clear() {
+        ArrayList<Long> ids = new ArrayList<>(entries.keySet());
         entries.clear();
         BadgesController.INSTANCE.getApiBadgeSource().clear();
         usersPrefs().edit().clear().apply();
+        NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.extraBadgesDidLoad, ids);
     }
 
     /** Refetches the user, e.g. after the own mark was toggled; cached data stays visible meanwhile. */
