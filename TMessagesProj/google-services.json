@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "335004274031",
-    "project_id": "exteraless",
-    "storage_bucket": "exteraless.firebasestorage.app"
+    "project_number": "626471983216",
+    "project_id": "mauve4a",
+    "storage_bucket": "mauve4a.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:335004274031:android:e06325b96c4b17732eac9a",
+        "mobilesdk_app_id": "1:626471983216:android:965df429f4ae2da3dc3cb5",
         "android_client_info": {
           "package_name": "org.xchunk.mauve"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBuCdqzdLtlstYvdiSnVJmVoxusxFKlabc"
+          "current_key": "AIzaSyBaW7B7q3w3eyEw5_BfWYfdulH6DPH8wYQ"
         }
       ],
       "services": {
