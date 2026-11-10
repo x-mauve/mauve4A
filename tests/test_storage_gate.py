@@ -63,7 +63,18 @@ def test_files_permission_does_not_open_settings_for_writing(gate):
     target = str(gate.root / "shared_prefs" / "exteraless_plugin_grants.xml")
     with pytest.raises(PermissionError):
         check(gate, "open", target, "w", os.O_WRONLY | os.O_CREAT)
-    check(gate, "open", target, "r", os.O_RDONLY)
+    with pytest.raises(PermissionError):
+        check(gate, "open", target, "r", os.O_RDONLY)
+
+
+def test_session_files_need_hooks_to_read(gate):
+    gate.granted.add("files")
+    session = str(gate.root / "files" / "tgnet.dat")
+    with pytest.raises(PermissionError):
+        check(gate, "open", session, "rb", os.O_RDONLY)
+    gate.granted.add("hooks")
+    check(gate, "open", session, "rb", os.O_RDONLY)
+    check(gate, "open", str(gate.root / "shared_prefs" / "userconfing.xml"), "r", os.O_RDONLY)
 
 
 def test_rename_into_settings_is_refused(gate):
@@ -125,3 +136,105 @@ def test_engine_dependency_install_may_write_shared_libs(gate):
     gate.granted.add("files")
     gate.loader._context_state.engine_write = True
     check(gate, "open", str(gate.plugins / "shared_libs" / "pkg" / "m.py"), "w", os.O_WRONLY | os.O_CREAT)
+
+
+def _fake_importer(gate, monkeypatch):
+    root = gate.root / "files" / "chaquopy" / "AssetFinder"
+    importer = types.ModuleType("java.android.importer")
+
+    class AssetFinder:
+        pass
+
+    class AssetZipFile:
+        def extract_if_changed(self, member, target_dir):
+            check(gate, "open", os.path.join(target_dir, member), "wb",
+                  os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
+
+    importer.AssetFinder = AssetFinder
+    importer.AssetZipFile = AssetZipFile
+    importer.ASSET_PREFIX = str(root)
+    genuine = AssetZipFile()
+    finder = AssetFinder()
+    finder.zip_files = [genuine]
+    monkeypatch.setitem(sys.modules, "java.android.importer", importer)
+    monkeypatch.setitem(sys.path_importer_cache, str(root / "stdlib"), finder)
+    gate.loader._owner_of_frame = \
+        lambda frame: "p" if frame.f_code.co_filename == "/plugins/p.py" else None
+    gate.module._capture_extraction()
+    monkeypatch.setattr(gate.module, "_runtime_prefixes", (os.path.realpath(root.parent),))
+    return root, genuine, AssetZipFile
+
+
+def test_runtime_extracts_native_module_imported_by_plugin(gate, monkeypatch):
+    root, genuine, _ = _fake_importer(gate, monkeypatch)
+    plugin = compile("archive.extract_if_changed('lib-dynload/_asyncio.so', target)",
+                     "/plugins/p.py", "exec")
+    exec(plugin, {"archive": genuine, "target": str(root / "stdlib")})
+
+
+def test_plugin_cannot_write_into_runtime_extraction(gate, monkeypatch):
+    root, genuine, archive_class = _fake_importer(gate, monkeypatch)
+    plugin = compile("archive.extract_if_changed(member, target)", "/plugins/p.py", "exec")
+    with pytest.raises(PermissionError):
+        exec(plugin, {"archive": archive_class(), "member": "_asyncio.so",
+                      "target": str(root / "stdlib")})
+    with pytest.raises(PermissionError):
+        exec(plugin, {"archive": genuine, "member": "x.xml",
+                      "target": str(gate.root / "shared_prefs")})
+    direct = compile("check(gate, 'open', path, 'wb', os.O_WRONLY)", "/plugins/p.py", "exec")
+    with pytest.raises(PermissionError):
+        exec(direct, {"check": check, "gate": gate, "os": os,
+                      "path": str(root / "stdlib" / "_asyncio.so")})
+
+
+def test_code_a_plugin_executes_from_its_own_unpacked_copy_is_attributed_to_it(gate):
+    unpacked = gate.root / "files" / "pak" / "p" / "bundle"
+    unpacked.mkdir(parents=True)
+    main = unpacked / "main.py"
+    main.write_text("x = 1\n")
+    owners = {}
+    gate.loader._resolve_owner = lambda path: owners.get(os.path.abspath(path))
+    gate.loader._register_owner = lambda path, plugin_id: owners.__setitem__(os.path.abspath(path), plugin_id)
+    check(gate, "exec", compile(main.read_text(), str(main), "exec"))
+    assert owners == {str(main): "p"}
+
+
+def test_executed_code_of_another_plugin_keeps_its_owner(gate):
+    other = gate.plugins / "other.py"
+    other.write_text("x = 1\n")
+    registered = []
+    gate.loader._resolve_owner = lambda path: "other"
+    gate.loader._register_owner = lambda path, plugin_id: registered.append(path)
+    with pytest.raises(PermissionError):
+        check(gate, "exec", compile(other.read_text(), str(other), "exec"))
+    assert registered == []
+
+
+def test_session_files_under_a_runtime_path_still_need_files(gate, monkeypatch):
+    files = str(gate.root / "files")
+    monkeypatch.setattr(gate.module, "_runtime_prefixes", (os.path.realpath(files),))
+    for name in ("cache4.db", "tgnet.dat", "accounts_map.json"):
+        target = gate.root / "files" / name
+        target.write_bytes(b"x")
+        with pytest.raises(PermissionError):
+            check(gate, "open", str(target), "rb", 0)
+
+
+def test_settings_and_foreign_plugin_data_are_never_runtime_files(gate, monkeypatch):
+    monkeypatch.setattr(gate.module, "_runtime_prefixes", (os.path.realpath(gate.root),))
+    prefs = gate.root / "shared_prefs" / "exteraless_plugin_grants.xml"
+    prefs.write_text("<map/>")
+    foreign = gate.plugins / ".data" / "other" / "secret.json"
+    foreign.write_text("{}")
+    for target in (prefs, foreign):
+        with pytest.raises(PermissionError):
+            check(gate, "open", str(target), "rb", 0)
+
+
+def test_runtime_modules_stay_readable(gate, monkeypatch):
+    lib = gate.root / "files" / "chaquopy" / "lib"
+    lib.mkdir(parents=True)
+    module = lib / "json.py"
+    module.write_text("")
+    monkeypatch.setattr(gate.module, "_runtime_prefixes", (os.path.realpath(gate.root / "files" / "chaquopy"),))
+    check(gate, "open", str(module), "rb", 0)

@@ -328,7 +328,7 @@ _path_owner_cache: Dict[str, Optional[str]] = {}
 # Владелец вычисляется из самого пути — регистрировать его негде: модули
 # Elyx-плагина исполняются внутри elyx_runtime.load_plugin_record, то есть
 # раньше, чем управление вернётся к нам.
-_ELYX_DIR_MARKERS = (".elyx_extracted", "elyx_local_libs")
+_ELYX_DIR_MARKERS = (".elyx_extracted", "elyx_local_libs", "ElyxPlugins")
 
 # Кадры, которые НЕ считаются «тем, кто импортирует»: машинерия импорта, мы сами
 # и per-module __import__ Elyx (elyx_runtime/namespace.py:_make_plugin_import) —
@@ -1451,6 +1451,70 @@ def _install_thread_marking() -> None:
         print(f"[exteraless:plugin_loader] thread marking failed: {e}", file=sys.stderr)
 
 
+def _install_raw_thread_marking() -> None:
+    try:
+        import _thread
+        import threading
+        original = _thread.start_new_thread
+        if getattr(original, "_exteraless_marked", False):
+            return
+
+        def start_new_thread(function, args=(), kwargs=None, *rest):
+            owner = None
+            try:
+                owner = plugin_frame_owner() or owner_of_object(function)
+            except Exception:
+                owner = None
+            target = function
+            if owner is not None:
+                def target(*a, **k):
+                    with java_runtime_mark(owner):
+                        return function(*a, **k)
+            if kwargs is None:
+                return original(target, args, *rest)
+            return original(target, args, kwargs, *rest)
+
+        start_new_thread._exteraless_marked = True
+        _thread.start_new_thread = start_new_thread
+        if hasattr(_thread, "start_new"):
+            _thread.start_new = start_new_thread
+        if getattr(threading, "_start_new_thread", None) is original:
+            threading._start_new_thread = start_new_thread
+    except Exception as e:
+        print(f"[exteraless:plugin_loader] raw thread marking failed: {e}", file=sys.stderr)
+
+
+_MESSAGE_DATABASES = ("cache4.db",)
+
+
+def java_path_permission(plugin_id, path):
+    if not plugin_id or not path:
+        return None
+    text = str(path)
+    try:
+        from file_utils import _is_own_path
+        if _is_own_path(plugin_id, text):
+            return None
+    except Exception:
+        pass
+    try:
+        from .audit_gate import _is_runtime_file
+        if _is_runtime_file(text):
+            return None
+    except Exception:
+        pass
+    try:
+        from .audit_gate import is_session_credential_path
+        if is_session_credential_path(text):
+            return PERM_HOOKS
+    except Exception:
+        pass
+    name = os.path.basename(text)
+    if any(name.startswith(db) for db in _MESSAGE_DATABASES):
+        return PERM_MESSAGES_READ
+    return PERM_FILES
+
+
 def _mirror_on_native_module(name, original, replacement) -> None:
     try:
         import java
@@ -1647,6 +1711,90 @@ def _install_dual_member_setters() -> None:
             _set_class_attr(cls, "__setattr__", __setattr__)
         except Exception as e:
             print(f"[exteraless:plugin_loader] field setters for {class_name} failed: {e}",
+                  file=sys.stderr)
+
+
+_DUAL_READ_CLASSES = (
+    "org.telegram.ui.Stars.StarGiftSheet$PageTransition",
+)
+
+_dual_reads_installed = False
+
+
+class _CallableInt(int):
+    def __call__(self, *args):
+        return self._method(*args)
+
+
+class _CallableFloat(float):
+    def __call__(self, *args):
+        return self._method(*args)
+
+
+class _CallableStr(str):
+    def __call__(self, *args):
+        return self._method(*args)
+
+
+def _get_dual_field(field, target):
+    kind = str(field.getType().getName())
+    if kind == "boolean":
+        return field.getBoolean(target)
+    if kind in ("int", "short", "byte"):
+        return field.getInt(target)
+    if kind == "long":
+        return field.getLong(target)
+    if kind in ("float", "double"):
+        return field.getDouble(target)
+    if kind == "char":
+        return str(field.getChar(target))
+    return field.get(target)
+
+
+class _DualMember:
+    def __init__(self, name, field, method):
+        self.name = name
+        self.field = field
+        self.method = method
+
+    def __get__(self, obj, owner=None):
+        if obj is None:
+            return self.method
+        value = _get_dual_field(self.field, obj)
+        bound = self.method.__get__(obj, owner)
+        if isinstance(value, bool):
+            value = int(value)
+        if isinstance(value, int):
+            wrapped = _CallableInt(value)
+        elif isinstance(value, float):
+            wrapped = _CallableFloat(value)
+        elif isinstance(value, str):
+            wrapped = _CallableStr(value)
+        else:
+            return value
+        wrapped._method = bound
+        return wrapped
+
+    def __set__(self, obj, value):
+        _set_dual_field(self.field, obj, value)
+
+
+def _install_dual_member_reads() -> None:
+    global _dual_reads_installed
+    if _dual_reads_installed:
+        return
+    _dual_reads_installed = True
+    from java import jclass
+    for class_name in _DUAL_READ_CLASSES:
+        try:
+            cls = jclass(class_name)
+            fields = _dual_member_fields(class_name)
+            for name, field in fields.items():
+                field.setAccessible(True)
+                method = getattr(cls, name)
+                _set_class_attr(cls, name, _DualMember(name, field, method))
+        except Exception as e:
+            print(f"[exteraless:plugin_loader] dual member reads failed for {class_name}: {e}",
                   file=sys.stderr)
 
 
@@ -2127,6 +2275,37 @@ def _install_interface_call_shim() -> None:
               file=sys.stderr)
 
 
+def _unload_classes_fallback(*targets):
+    return []
+
+
+def _unload_class_loader_fallback(loader):
+    loader_class = engine_java_class("java.lang.ClassLoader")
+    if loader_class is None or not isinstance(loader, loader_class):
+        raise TypeError(f"{loader!r} object is not a java.lang.ClassLoader")
+    python_class = engine_java_class("com.chaquo.python.Python")
+    if python_class is not None and loader.equals(python_class.getClass().getClassLoader()):
+        raise ValueError("Cannot unload the main ClassLoader")
+    return []
+
+
+_JAVA_CLASS_LOADER_API = (
+    ("unload_classes", _unload_classes_fallback),
+    ("unload_class_loader", _unload_class_loader_fallback),
+)
+
+
+def _install_java_class_loader_api() -> None:
+    try:
+        import java
+    except Exception:
+        return
+    native = sys.modules.get("java.chaquopy") or getattr(java, "chaquopy", None)
+    for name, fallback in _JAVA_CLASS_LOADER_API:
+        if getattr(java, name, None) is None:
+            setattr(java, name, getattr(native, name, None) or fallback)
+
+
 _LOG_LEVELS = {10: "D", 20: "I", 30: "W", 40: "E", 50: "F"}
 
 
@@ -2230,15 +2409,18 @@ def _install_sandbox() -> None:
         from . import audit_gate
         audit_gate.install(sys.modules[__name__])
         _install_thread_marking()
+        _install_raw_thread_marking()
         _install_jclass_guard()
         _install_reflection_gate()
         _install_color_int_shims()
         _install_dual_member_setters()
+        _install_dual_member_reads()
         _install_java_getters()
         _install_log_capture()
         _install_dynamic_proxy_guard()
         _install_proxy_class_guard()
         _install_interface_call_shim()
+        _install_java_class_loader_api()
         from . import class_aliases
         class_aliases.install_import_hook()
         if not any(isinstance(finder, _PermissionFinder) for finder in sys.meta_path):
@@ -2305,6 +2487,27 @@ def _missing_java_classes(exc: BaseException) -> List[str]:
     return missing
 
 
+def _gated_java_import(exc: BaseException) -> Optional[str]:
+    requested = getattr(exc, "_exteraless_java_import", None)
+    if not requested:
+        return None
+    module, fromlist = requested
+    candidates = [f"{module}.{item}" for item in fromlist if item and item != "*"] or [module]
+    for candidate in candidates:
+        try:
+            from .class_aliases import resolve
+            name = resolve(candidate)
+        except Exception:
+            name = candidate
+        perm = java_class_permission(name)
+        if perm is None:
+            continue
+        wanted = perm if isinstance(perm, tuple) else (perm,)
+        return (f"class {name} refused: missing the "
+                + " or ".join(f"'{single}'" for single in wanted) + " permission")
+    return None
+
+
 def _java_import_hint(exc: BaseException) -> Optional[str]:
     """Настоящая причина отказа импорта java-пакета.
 
@@ -2319,6 +2522,9 @@ def _java_import_hint(exc: BaseException) -> Optional[str]:
     root = (getattr(exc, "name", "") or "").partition(".")[0]
     if root not in _JAVA_ROOTS:
         return None
+    gated = _gated_java_import(exc)
+    if gated:
+        return gated
     try:
         import java
     except Exception as e:
@@ -2495,6 +2701,7 @@ def _import_module(path: str, plugin_id: str):
     # имени модуля в кадре, а импорты верхнего уровня выполняются уже внутри
     # exec_module — после него регистрировать было бы поздно.
     _register_owner(path, plugin_id)
+    before = set(sys.modules)
     try:
         # Контекст нужен и на верхнем уровне модуля: плагины каталога создают там
         # джавовые подклассы и трогают SDK, а проверки разрешений отказывают,
@@ -2503,9 +2710,22 @@ def _import_module(path: str, plugin_id: str):
             spec.loader.exec_module(module)
     except Exception:
         sys.modules.pop(module_name, None)
+        _drop_orphaned_modules(before)
         _forget_owner(path)
         raise
     return module, module_name
+
+
+def _drop_orphaned_modules(before) -> None:
+    for name in list(sys.modules):
+        if name in before or "." not in name:
+            continue
+        parent = name.rpartition(".")[0]
+        while parent:
+            if parent not in sys.modules:
+                sys.modules.pop(name, None)
+                break
+            parent = parent.rpartition(".")[0]
 
 
 def _class_owner(obj) -> Optional[str]:
@@ -2675,11 +2895,17 @@ def _load_elyx_plugin(path: str, plugin_id: str, clock=None) -> str:
     try:
         if plugin_id in plugins:
             _unload_record(plugin_id, quiet=True)
+        _ensure_plugins_dir_on_path()
         record = PluginRecord(module=None, instance=None, path=path)
         record.__dict__["_elyx"] = True
         record.__dict__["_clock"] = clock
-        with plugin_context(plugin_id):
-            elyx_runtime.load_plugin_record(record, path)
+        before = set(sys.modules)
+        try:
+            with plugin_context(plugin_id):
+                elyx_runtime.load_plugin_record(record, path)
+        except Exception:
+            _drop_orphaned_modules(before)
+            raise
         record.__dict__.pop("_clock", None)
         if record.instance is None:
             raise RuntimeError("elyx_runtime did not populate the plugin record")
@@ -3335,7 +3561,7 @@ def get_settings_json(plugin_id: str) -> str:
         record.click_callbacks.clear()
         record.change_callbacks.clear()
         record.custom_views.clear()
-        return "null"
+        return "[]"
 
     pending = replace(record, click_callbacks={}, change_callbacks={}, custom_views={})
     out = []

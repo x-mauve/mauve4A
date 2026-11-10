@@ -26,8 +26,32 @@ The project is **in beta**: some exteraGram features haven't been ported yet. If
 notice something missing, open an issue or write to the [channel](https://t.me/mauveApp?direct).
 
 * Package name: `org.xchunk.mauve`
-* Ported so far: settings screens, chat appearance and options, icon packs, the Pill
-  Stack, the side menu, and the Python plugin engine
+* 64-bit devices only (`arm64-v8a`, `x86_64`)
+
+### What's inside
+
+**Plugins**
+
+* Compatible with exteraGram plugins: single-file `.plugin`, `.elyx`/`.eaf` archives,
+  DEX plugins and Java method hooks (Xposed API)
+* Permissions for network, files, reading and sending messages, intents, settings, hooks
+  and native libraries. A call without permission is quietly denied and logged
+* A per-plugin activity log with search and export
+* Crash protection: a plugin that keeps crashing the app is disabled, and repeated
+  launch crashes bring up safe mode
+* Export and import of all plugins with their settings
+* Python 3.11 on a custom [Chaquopy](https://github.com/exteraless/chaquopy) build
+
+**Client**
+
+* exteraGram settings: appearance, chats, icon packs, the side menu, the Pill Stack,
+  settings search
+* A Material 3 music player with a customizable cover, mini player, queue
+  and synced lyrics
+* Ghost mode and saving deleted and edited messages (with per-chat exceptions)
+* A custom AI service instead of Telegram's built-in editor and summaries
+* Monet themes, including the Inugram style
+* QR login for other devices from the side menu
 
 ### Links
 
@@ -36,6 +60,8 @@ notice something missing, open an issue or write to the [channel](https://t.me/m
 * Upstream: [github.com/exteraless/exteraless](https://github.com/exteraless/exteraless)
 
 ### Building
+
+You need JDK 21, the Android SDK with NDK and CMake, and Python 3.11 on the build machine.
 
 1. Clone the repository with its submodules:
 
@@ -57,6 +83,12 @@ notice something missing, open an issue or write to the [channel](https://t.me/m
    TELEGRAM_APP_HASH=<your_app_hash>
    ```
 
+   If `python3` on your system isn't 3.11, point to the right interpreter:
+
+   ```properties
+   CHAQUOPY_BUILD_PYTHON=/usr/bin/python3.11
+   ```
+
 3. To sign the APK, add your own `TMessagesProj/release.keystore` and append to `local.properties`:
 
    ```properties
@@ -71,17 +103,19 @@ notice something missing, open an issue or write to the [channel](https://t.me/m
 4. For push notifications, add your own `TMessagesProj/google-services.json`
    (Firebase, package name `org.xchunk.mauve`).
 
-5. Replace the project metadata:
-
-    - the Google Maps key in the `com.google.android.maps.v2.API_KEY` entry in `TMessagesProj/src/main/AndroidManifest.xml`;
-    - `BaseRemoteHelper.CHANNEL_METADATA_ID`: the numeric ID of your metadata channel, without the `-100` prefix.
+5. Optional: your own keys in `local.properties`: `MAPS_API_KEY` (Google Maps; the key is
+   tied to the package and signature, so someone else's shows an empty map) and
+   `GLYPH_API_KEY` (Nothing Glyph). For the metadata channel, set its numeric ID without
+   the `-100` prefix in `BaseRemoteHelper.CHANNEL_METADATA_ID`.
 
 6. Build with `./gradlew :TMessagesProj:assembleDebug` or open the project in Android Studio.
+   The Python runtime is built from the `TMessagesProj/chaquopy` submodule during the
+   build; Cython is installed automatically.
 
 **About ABIs.** Only 64-bit `arm64-v8a` and `x86_64` are built: Chaquopy builds
-Python 3.12 only for those, and configuration fails on `armeabi-v7a`. The `NATIVE_TARGET`
-variable sets the target: `arm64-v8a` (one ABI, faster), `universal` (both), or
-`SKIP` (no native part, only Java and resources).
+Python only for those. The `NATIVE_TARGET` variable sets the target: `arm64-v8a` or
+`x86_64` (one ABI, faster), empty or `universal` (one APK with both), or `SKIP`
+(no native part, only Java and resources).
 
 ### Building with GitHub Actions
 

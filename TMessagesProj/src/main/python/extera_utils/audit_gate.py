@@ -370,10 +370,44 @@ def _is_runtime_file(path: Optional[str]) -> bool:
         target = os.path.realpath(path)
     except Exception:
         target = path
+    if is_sensitive_app_path(target):
+        return False
     for prefix in _runtime_paths():
         if target == prefix or target.startswith(prefix + os.sep):
             return True
     return False
+
+
+_SENSITIVE_NAMES = ("tgnet.dat", "cache4.db", "userconfing", "userconfig", "accounts_map.json",
+                    "passcode", "file_to_path.db")
+_SENSITIVE_DIRS = ("/shared_prefs/", "/databases/", "/plugins/.data/")
+
+
+def is_sensitive_app_path(path: Optional[str]) -> bool:
+    if not path:
+        return False
+    text = str(path)
+    name = os.path.basename(text)
+    if any(name.startswith(prefix) for prefix in _SENSITIVE_NAMES):
+        return True
+    return any(part in text for part in _SENSITIVE_DIRS)
+
+
+_SESSION_NAMES = ("tgnet.dat", "userconfing", "userconfig", "accounts_map.json", "passcode")
+
+
+def is_session_credential_path(path: Optional[str]) -> bool:
+    if not path:
+        return False
+    text = str(path)
+    try:
+        text = os.path.realpath(text)
+    except Exception:
+        pass
+    name = os.path.basename(text)
+    if any(name.startswith(prefix) for prefix in _SESSION_NAMES):
+        return True
+    return "/shared_prefs/" in text
 
 
 def _is_own_file(plugin_id: str, path: Optional[str]) -> bool:
@@ -460,6 +494,19 @@ def _deny_network(plugin_id: str, event: str, what: str, detail: Optional[str]):
     raise _denial(ConnectionRefusedError(message))
 
 
+def _adopt_executed_code(args, plugin_id, loader):
+    path = getattr(_arg(args, 0), "co_filename", None)
+    if not isinstance(path, str) or not path or path.startswith("<"):
+        return
+    if _is_runtime_file(path):
+        return
+    try:
+        if loader._resolve_owner(path) is None and os.path.isfile(path):
+            loader._register_owner(path, plugin_id)
+    except Exception:
+        pass
+
+
 def _foreign_code_owner(event, args, plugin_id, loader):
     """id чужого плагина, чьим именем помечен компилируемый код, или None.
 
@@ -496,6 +543,9 @@ def _check(event, args, loader):
 
     if loader.unsafe_mode():
         return
+
+    if event == "exec":
+        _adopt_executed_code(args, plugin_id, loader)
 
     if event in ("compile", "exec"):
         victim = _foreign_code_owner(event, args, plugin_id, loader)
@@ -574,6 +624,12 @@ def _check(event, args, loader):
                 continue  # свой каталог плагину открыт всегда
             if _is_runtime_file(path):
                 continue  # это загрузка модуля интерпретатором
+            if is_session_credential_path(path):
+                allowed = loader.has_permission(loader.PERM_HOOKS, plugin_id)
+                _record(plugin_id, event, path, allowed)
+                loader.require_permission(loader.PERM_HOOKS, "read session files",
+                                           detail=path, plugin_id=plugin_id)
+                return
             allowed = loader.has_permission(loader.PERM_FILES, plugin_id)
             _record(plugin_id, event, path, allowed)
             if allowed:
@@ -586,7 +642,7 @@ def _check(event, args, loader):
 
 _SEALED_DIRS = ("shared_prefs", "databases", "files/chaquopy")
 _PLUGIN_CODE_SUFFIXES = (".py", ".pyc", ".pyo", ".pyw", ".pth", ".so", ".plugin", ".eaf", ".elyx")
-_PLUGIN_PRIVATE_DIRS = (".data", ".elyx_extracted", "elyx_local_libs")
+_PLUGIN_PRIVATE_DIRS = (".data", ".elyx_extracted", "elyx_local_libs", "ElyxPlugins")
 _PLUGIN_ENGINE_DIRS = ("__pycache__", "shared_libs")
 
 _WRITE_TARGETS = {
@@ -696,10 +752,53 @@ def _write_targets(event, args):
     return targets
 
 
+_extraction = (None, None, ())
+
+
+def _capture_extraction() -> None:
+    global _extraction
+    try:
+        importer = sys.modules["java.android.importer"]
+        zips = []
+        for finder in list(sys.path_importer_cache.values()):
+            if isinstance(finder, importer.AssetFinder):
+                for archive in finder.zip_files:
+                    if not any(archive is known for known in zips):
+                        zips.append(archive)
+        _extraction = (os.path.realpath(importer.ASSET_PREFIX),
+                       importer.AssetZipFile.extract_if_changed.__code__,
+                       tuple(zips))
+    except Exception:
+        _extraction = (None, None, ())
+
+
+def _runtime_extraction(path: str, loader) -> bool:
+    root, code, zips = _extraction
+    if root is None:
+        return False
+    try:
+        target = os.path.realpath(path)
+    except Exception:
+        return False
+    if not _within(target, root):
+        return False
+    frame = sys._getframe(1)
+    while frame is not None:
+        if frame.f_code is code:
+            archive = frame.f_locals.get("self")
+            return any(archive is known for known in zips)
+        if loader._owner_of_frame(frame) is not None:
+            return False
+        frame = frame.f_back
+    return False
+
+
 def _check_protected_write(event, args, plugin_id, loader) -> None:
     for path in _write_targets(event, args):
         reason = _protected_reason(plugin_id, path)
         if reason is None:
+            continue
+        if _runtime_extraction(path, loader):
             continue
         if getattr(loader._context_state, "engine_write", False) \
                 or loader.has_permission(loader.PERM_HOOKS, plugin_id):
@@ -729,6 +828,7 @@ def install(loader_module) -> bool:
     _loader = loader_module
     if _installed:
         return True
+    _capture_extraction()
     try:
         bound_watched = _WATCHED
         bound_hook = _hook

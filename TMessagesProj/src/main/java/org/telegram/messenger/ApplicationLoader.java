@@ -273,6 +273,8 @@ public class ApplicationLoader extends Application implements CameraXConfig.Prov
             e.printStackTrace();
         }
 
+        LiteMode.registerBatteryReceiver();
+
         try {
             PowerManager pm = (PowerManager) ApplicationLoader.applicationContext.getSystemService(Context.POWER_SERVICE);
             isScreenOn = pm.isScreenOn();
@@ -308,6 +310,7 @@ public class ApplicationLoader extends Application implements CameraXConfig.Prov
         }
         SharedPrefsHelper.init(applicationContext);
         FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(AndroidUtil.shouldEnableCrashlytics());
+        Utilities.globalQueue.postRunnable(app.exteraless.crash.CrashLog::reportOutOfMemory);
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) { //TODO improve account
             UserConfig.getInstance(a).loadConfig();
             MessagesController.getInstance(a);
@@ -905,6 +908,7 @@ public class ApplicationLoader extends Application implements CameraXConfig.Prov
             app.exteraless.crash.CrashLog.record(thread, error);
             if (AndroidUtil.shouldReportCrashToCrashlytics(error)) {
                 if (crashlyticsHandler != null) {
+                    app.exteraless.crash.CrashLog.putCrashlyticsKeys(error);
                     crashlyticsHandler.uncaughtException(thread, error);
                     return;
                 }

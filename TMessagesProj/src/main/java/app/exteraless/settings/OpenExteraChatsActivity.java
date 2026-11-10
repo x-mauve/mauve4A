@@ -184,7 +184,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int searchHashtagChannelRow = -1;
     private int addCommaRow = -1;
     private int inlineMathRow = -1;
-    private int inlineMathCurrencyRow = -1;
+    private int inlineMathSettingsRow = -1;
     private int hideSendAsPeerRow = -1;
     private int tapToSwitchRecordRow = -1;
     private int keepAttachButtonRow = -1;
@@ -198,6 +198,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     // Messages
     private int messagesHeaderRow = -1;
     private int removeMessageTailRow = -1;
+    private int unreadCapsuleRow = -1;
     private int replaceEditedRow = -1;
     private int showOnlineStatusRow = -1;
     private int hideShareButtonRow = -1;
@@ -485,7 +486,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         inputHeaderRow = addRow("inputHeader");
         addCommaRow = addRow("addCommaAfterMention");
         inlineMathRow = addRow("inlineMathResult");
-        inlineMathCurrencyRow = ChatsConfig.inlineMathResult.Bool() ? addRow("inlineMathCurrency") : -1;
+        inlineMathSettingsRow = addRow("inlineMathSettings");
         tapToSwitchRecordRow = addRow("tapToSwitchRecord", "UseChatAttachEnterMenu");
         keepAttachButtonRow = addRow("keepAttachButton");
         inputDividerRow = addRow();
@@ -498,6 +499,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
 
         messagesHeaderRow = addRow("messagesHeader");
         removeMessageTailRow = addRow("removeMessageTail");
+        unreadCapsuleRow = addRow("unreadCapsule");
         replaceEditedRow = addRow("replaceEdited");
         showOnlineStatusRow = addRow("showOnlineStatus");
         showResultsBeforeVotingRow = addRow("showResultsBeforeVoting");
@@ -1359,7 +1361,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     /** Вторая камера для «бесшовного переключения» есть не на всех устройствах. */
     private static boolean isSeamlessSwitchingAvailable() {
         Context context = ApplicationLoader.applicationContext;
-        return context != null && DualCameraView.dualAvailableStatic(context);
+        return context != null && app.exteraless.camera.CameraXSession.isSeamlessSwitchingAvailable(context);
     }
 
     private static boolean isSeamlessSwitchingEnabled() {
@@ -1828,6 +1830,9 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         } else if (position == adminShortcutsRow) {
             toggleQuickAdminShortcuts(view);
             return;
+        } else if (position == inlineMathSettingsRow) {
+            presentFragment(new InlineResultsActivity());
+            return;
         } else if (position == menusRow) {
             presentFragment(new OpenExteraChatsActivity(SCREEN_MENUS));
             return;
@@ -1899,17 +1904,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (view instanceof TextCheckCell) {
             ((TextCheckCell) view).setChecked(value);
         }
-        if (position == inlineMathRow) {
-            int wasCurrencyRow = inlineMathCurrencyRow;
-            updateRows();
-            if (listAdapter != null) {
-                if (wasCurrencyRow != -1 && inlineMathCurrencyRow == -1) {
-                    listAdapter.notifyItemRemoved(wasCurrencyRow);
-                } else if (wasCurrencyRow == -1 && inlineMathCurrencyRow != -1) {
-                    listAdapter.notifyItemInserted(inlineMathCurrencyRow);
-                }
-            }
-        } else if (position == removeMessageTailRow) {
+        if (position == removeMessageTailRow) {
             // Пузырь рисуется закешированным drawable — без сброса эффекта не видно.
             // Обнуление и пересоздание — строго вместе: Theme.createChatResources
             // восстанавливает весь блок именно по условию chat_msgInDrawable == null.
@@ -2092,10 +2087,10 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == disableGlobalSearchRow) return NaConfig.INSTANCE.getDisableGlobalSearch();
         if (position == addCommaRow) return OpenExteraConfig.addCommaAfterMention;
         if (position == inlineMathRow) return ChatsConfig.inlineMathResult;
-        if (position == inlineMathCurrencyRow) return ChatsConfig.inlineMathCurrency;
         if (position == hideSendAsPeerRow) return NekoConfig.hideSendAsChannel;
         if (position == keepAttachButtonRow) return ChatsConfig.keepAttachButton;
         if (position == removeMessageTailRow) return ChatsConfig.removeMessageTail;
+        if (position == unreadCapsuleRow) return ChatsConfig.unreadCapsule;
         if (position == replaceEditedRow) return NaConfig.INSTANCE.getUseEditedIcon();
         if (position == showOnlineStatusRow) return NaConfig.INSTANCE.getShowOnlineStatus();
         if (position == hideShareButtonRow) return NaConfig.INSTANCE.getHideShareButtonInChannel();
@@ -2804,10 +2799,6 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setTextAndValueAndCheck(getString(R.string.OEChatsInlineMath),
                         getString(R.string.OEChatsInlineMathInfo),
                         ChatsConfig.inlineMathResult.Bool(), true, true);
-            } else if (position == inlineMathCurrencyRow) {
-                cell.setTextAndValueAndCheck(getString(R.string.OEChatsInlineMathCurrency),
-                        getString(R.string.OEChatsInlineMathCurrencyInfo),
-                        ChatsConfig.inlineMathCurrency.Bool(), true, true);
             } else if (position == hideSendAsPeerRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsHideSendAsPeer), NekoConfig.hideSendAsChannel.Bool(), true);
             } else if (position == tapToSwitchRecordRow) {
@@ -2816,6 +2807,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setTextAndCheck(getString(R.string.OEChatsKeepAttachButton), ChatsConfig.keepAttachButton.Bool(), false);
             } else if (position == removeMessageTailRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsRemoveMessageTail), ChatsConfig.removeMessageTail.Bool(), true);
+            } else if (position == unreadCapsuleRow) {
+                cell.setTextAndCheck(getString(R.string.OEChatsUnreadCapsule), ChatsConfig.unreadCapsule.Bool(), true);
             } else if (position == replaceEditedRow) {
                 // В подпись подставляется локализованное «edited».
                 cell.setTextAndCheck(LocaleController.formatString(R.string.OEChatsReplaceEditedWithIcon,
@@ -2924,7 +2917,10 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         }
 
         private void bindText(TextCell cell, int position) {
-            if (position == menusRow) {
+            if (position == inlineMathSettingsRow) {
+                cell.setTextAndIcon(getString(R.string.OEInlineTitle), R.drawable.msg_settings, true);
+                cell.setSubtitle(getString(R.string.OEInlineTitleInfo));
+            } else if (position == menusRow) {
                 cell.setTextAndIcon(getString(R.string.OEChatsMenus), R.drawable.msg_list, true);
                 cell.setSubtitle(getString(R.string.OEChatsMenusInfo));
             } else if (position == mediaRow) {
@@ -3047,7 +3043,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             if (position == doubleTapReactionRow) return TYPE_SET_REACTION;
             if (isHeader(position)) return TYPE_HEADER;
             if (isDivider(position)) return TYPE_INFO_PRIVACY;
-            if (position == aiChatRow || position == chatSettingsRow || position == menusRow || position == mediaRow) {
+            if (position == inlineMathSettingsRow || position == aiChatRow || position == chatSettingsRow || position == menusRow || position == mediaRow) {
                 return TYPE_TEXT;
             }
             if (isGroupHeader(position)) return TYPE_EXPANDABLE_SWITCH;

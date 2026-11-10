@@ -18,13 +18,8 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.graphics.Typeface;
 import android.view.View;
-import android.view.Gravity;
 import android.view.ViewGroup;
-import android.webkit.WebView;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
 
 import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.RecyclerView;
@@ -58,9 +53,6 @@ import app.exteraless.OpenExteraConfig;
 import app.exteraless.chats.ChatsConfig;
 import app.exteraless.general.GeneralConfig;
 import app.exteraless.general.GeneralHelper;
-import app.exteraless.nowplaying.LastFmNowPlaying;
-import app.exteraless.nowplaying.LastFmWebFetcher;
-import app.exteraless.nowplaying.ProfileMusicStamp;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.settings.NekoTranslatorSettingsActivity;
 import tw.nekomimi.nekogram.config.ConfigItem;
@@ -83,7 +75,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private static final int PUSH_SERVICE_UNIFIED = 2;
 
     /** Проверяется имя папки, а не путь. */
-    private static final Pattern LASTFM_PATTERN = Pattern.compile("[a-z0-9_-]{1,32}");
     private static final Pattern SAVE_PATH_PATTERN = Pattern.compile("^(?!\\.{1,2}$)[A-Za-z0-9._ -]{1,255}$");
 
     /**
@@ -126,13 +117,16 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private int savePathRow;
     private int storageDividerRow;
 
+    private int botPrivacyHeaderRow;
+    private int botPrivacyAccountRow;
+    private int botPrivacyInfoRow;
+
     private int profileHeaderRow;
     private int relativeLastSeenRow;
     private int hidePhoneRow;
     private int showClientMarkRow;
     private int showExtraBadgesRow;
     private int showIdAndDcRow;
-    private int lastfmRow;
     private int profileDividerRow;
 
     private int archiveHeaderRow;
@@ -203,11 +197,14 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         savePathRow = addRow("savePath");
         storageDividerRow = addRow();
 
+        botPrivacyHeaderRow = addRow("botPrivacyHeader");
+        botPrivacyAccountRow = addRow("botPrivacyAccount", "OEBotPrivacyAccount");
+        botPrivacyInfoRow = addRow();
+
         profileHeaderRow = addRow("profileHeader");
         relativeLastSeenRow = addRow("relativeLastSeen");
         hidePhoneRow = addRow("hidePhone");
         showIdAndDcRow = addRow("showIdAndDc");
-        lastfmRow = addRow("lastfm");
         // The extraBadges switches make no sense in builds without a server
         boolean extraBadges = !TextUtils.isEmpty(BuildConfig.EXTRABADGES_URL);
         showClientMarkRow = extraBadges ? addRow("showClientMark") : -1;
@@ -274,6 +271,80 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         return new ListAdapter(context);
     }
 
+    private void setBotPrivacyMode(boolean useSelectedAccount, boolean alwaysAsk) {
+        GeneralConfig.botPrivacyEnabled.setConfigBool(useSelectedAccount && !alwaysAsk);
+        GeneralConfig.botPrivacyAlwaysAsk.setConfigBool(alwaysAsk);
+        if (listAdapter != null) {
+            listAdapter.notifyItemChanged(botPrivacyAccountRow);
+            listAdapter.notifyItemChanged(botPrivacyInfoRow);
+        }
+    }
+
+    private CharSequence botPrivacyValue() {
+        if (GeneralConfig.botPrivacyAlwaysAsk.Bool()) {
+            return getString(R.string.OEBotPrivacyAlwaysAsk);
+        }
+        if (!GeneralConfig.botPrivacyEnabled.Bool()) {
+            return getString(R.string.OEBotPrivacyOff);
+        }
+        return app.exteraless.privacy.BotAccountRouter.accountName(app.exteraless.privacy.BotAccountRouter.configuredAccount());
+    }
+
+    private void showBotPrivacyDialog() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        java.util.ArrayList<Integer> accounts = new java.util.ArrayList<>();
+        java.util.ArrayList<Long> identities = new java.util.ArrayList<>();
+        java.util.ArrayList<CharSequence> titles = new java.util.ArrayList<>();
+        titles.add(getString(R.string.OEBotPrivacyOff));
+        titles.add(getString(R.string.OEBotPrivacyAlwaysAsk));
+        for (int account : app.exteraless.privacy.BotAccountRouter.accounts()) {
+            if (tw.nekomimi.nekogram.helpers.PasscodeHelper.isAccountHidden(account)) {
+                continue;
+            }
+            accounts.add(account);
+            identities.add(org.telegram.messenger.UserConfig.getInstance(account).getClientUserId());
+            titles.add(app.exteraless.privacy.BotAccountRouter.accountName(account));
+        }
+        int[] icons = new int[titles.size()];
+        java.util.Arrays.fill(icons, R.drawable.msg_openprofile);
+        icons[0] = R.drawable.msg_cancel;
+        icons[1] = R.drawable.msg_help;
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(getString(R.string.OEBotPrivacyAccount));
+        builder.setItems(titles.toArray(new CharSequence[0]), icons, (dialog, which) -> {
+            if (which == 0) {
+                setBotPrivacyMode(false, false);
+            } else if (which == 1) {
+                setBotPrivacyMode(false, true);
+            } else {
+                int index = which - 2;
+                int account = accounts.get(index);
+                if (org.telegram.messenger.UserConfig.isValidAccount(account)
+                        && !tw.nekomimi.nekogram.helpers.PasscodeHelper.isAccountHidden(account)
+                        && org.telegram.messenger.UserConfig.getInstance(account).getClientUserId() == identities.get(index)) {
+                    GeneralConfig.botPrivacyUserId.setConfigLong(identities.get(index));
+                    setBotPrivacyMode(true, false);
+                }
+            }
+        });
+        builder.setNegativeButton(getString(R.string.Cancel), null);
+        AlertDialog dialog = builder.create();
+        showDialog(dialog);
+        int selected = 0;
+        if (GeneralConfig.botPrivacyAlwaysAsk.Bool()) {
+            selected = 1;
+        } else if (GeneralConfig.botPrivacyEnabled.Bool()) {
+            int configured = accounts.indexOf(app.exteraless.privacy.BotAccountRouter.configuredAccount());
+            selected = configured >= 0 ? configured + 2 : -1;
+        }
+        if (selected >= 0) {
+            int accent = getThemedColor(Theme.key_windowBackgroundWhiteBlueText);
+            dialog.setItemColor(selected, accent, accent);
+        }
+    }
+
     /** Перерисовать экраны под нами. */
     private void rebuildAll() {
         if (getParentLayout() != null) {
@@ -283,6 +354,10 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected void onItemClick(View view, int position, float x, float y) {
+        if (position == botPrivacyAccountRow) {
+            showBotPrivacyDialog();
+            return;
+        }
         if (position == translatorRow) {
             presentFragment(new NekoTranslatorSettingsActivity());
             return;
@@ -329,15 +404,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
         if (position == showIdAndDcRow) {
             showIdAndDcSelector();
-            return;
-        }
-
-        if (position == lastfmRow) {
-            if (GeneralConfig.lastfmExplained.Bool()) {
-                showLastFmDialog();
-            } else {
-                showLastFmAbout();
-            }
             return;
         }
 
@@ -607,257 +673,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         showDialog(dialog, d -> AndroidUtilities.hideKeyboard(editText));
     }
 
-    private void showLastFmAbout() {
-        Context context = getParentActivity();
-        if (context == null) {
-            return;
-        }
-        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourcesProvider);
-        builder.setTitle(getString(R.string.OEGeneralLastFm));
-        builder.setMessage(getString(R.string.OEGeneralLastFmAbout));
-        builder.setPositiveButton(getString(R.string.Continue), (dialog, which) -> {
-            GeneralConfig.lastfmExplained.setConfigBool(true);
-            dialog.dismiss();
-            showLastFmDialog();
-        });
-        builder.setNegativeButton(getString(R.string.Cancel), (dialog, which) -> dialog.dismiss());
-        showDialog(builder.create());
-    }
-
-    private void showLastFmDialog() {
-        Context context = getParentActivity();
-        if (context == null) {
-            return;
-        }
-
-        EditTextBoldCursor editText = new EditTextBoldCursor(context);
-        editText.lineYFix = true;
-        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
-        editText.setText(GeneralConfig.lastfmNick());
-        editText.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
-        editText.setHintColor(getThemedColor(Theme.key_groupcreate_hintText));
-        editText.setHintText(getString(R.string.OEGeneralLastFmHint));
-        editText.setFocusable(true);
-        editText.setSingleLine(true);
-        editText.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-        editText.setBackground(null);
-        editText.setLineColors(getThemedColor(Theme.key_windowBackgroundWhiteInputField),
-                getThemedColor(Theme.key_windowBackgroundWhiteInputFieldActivated),
-                getThemedColor(Theme.key_text_RedRegular));
-        editText.setCursorColor(getThemedColor(Theme.key_windowBackgroundWhiteInputFieldActivated));
-        editText.setPadding(0, dp(6), 0, dp(6));
-
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
-                LayoutHelper.WRAP_CONTENT, 24f, 0f, 24f, 10f));
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourcesProvider);
-        builder.setTitle(getString(R.string.OEGeneralLastFm));
-        builder.makeCustomMaxHeight();
-        builder.setView(container);
-        builder.setWidth(dp(292));
-        builder.setPositiveButton(getString(R.string.Done), (dialog, which) -> {
-            String value = editText.getText() == null ? "" : editText.getText().toString().trim();
-            if (value.startsWith("@")) {
-                value = value.substring(1);
-            }
-            value = value.toLowerCase();
-            if (!TextUtils.isEmpty(value) && !LASTFM_PATTERN.matcher(value).matches()) {
-                AndroidUtilities.shakeView(editText);
-                return;
-            }
-            GeneralConfig.lastfmNick.setConfigString(value);
-            if (listAdapter != null) {
-                listAdapter.notifyItemChanged(lastfmRow);
-            }
-            dialog.dismiss();
-            applyLastFmToProfileMusic(value);
-        });
-        builder.setNegativeButton(getString(R.string.Cancel), (dialog, which) -> dialog.dismiss());
-
-        AlertDialog dialog = builder.create();
-        dialog.setOnShowListener(d -> {
-            editText.requestFocus();
-            editText.setSelection(editText.length());
-            AndroidUtilities.showKeyboard(editText);
-        });
-        dialog.setDismissDialogByButtons(false);
-        showDialog(dialog, d -> AndroidUtilities.hideKeyboard(editText));
-    }
-
-    private void showLastFmDebug() {
-        Context context = getParentActivity();
-        if (context == null) {
-            return;
-        }
-        TextView logView = new TextView(context);
-        logView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11);
-        logView.setTypeface(AndroidUtilities.mono());
-        logView.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
-        logView.setTextIsSelectable(true);
-
-        ScrollView scrollView = new ScrollView(context);
-        scrollView.addView(logView, new ScrollView.LayoutParams(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
-        LinearLayout actions = new LinearLayout(context);
-        actions.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout firstRow = new LinearLayout(context);
-        LinearLayout secondRow = new LinearLayout(context);
-        actions.addView(firstRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 36));
-        actions.addView(secondRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 36, 0, 6, 0, 0));
-
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.addView(actions, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
-                LayoutHelper.WRAP_CONTENT, 20f, 0f, 20f, 10f));
-        container.addView(scrollView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 320, 24f, 0f, 24f, 0f));
-
-        Runnable[] refresh = new Runnable[1];
-        AlertDialog dialog = new AlertDialog.Builder(context, resourcesProvider)
-                .setTitle(getString(R.string.OEGeneralLastFmDebug))
-                .setView(container)
-                .setPositiveButton(getString(R.string.Close), null)
-                .create();
-        refresh[0] = () -> {
-            String nick = GeneralConfig.lastfmNick();
-            String text = "nick: " + (TextUtils.isEmpty(nick) ? "-" : nick)
-                    + "\nmode: " + (LastFmNowPlaying.isWebMode() ? "webview" : "okhttp")
-                    + "\nchallenge passed: " + LastFmWebFetcher.isReady()
-                    + "\ncookies: " + LastFmWebFetcher.cookieSummary()
-                    + "\n\n" + LastFmNowPlaying.debugLog();
-            if (!TextUtils.equals(logView.getText(), text)) {
-                boolean atBottom = !scrollView.canScrollVertically(1);
-                logView.setText(text);
-                if (atBottom) {
-                    scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
-                }
-            }
-            if (dialog.isShowing()) {
-                AndroidUtilities.runOnUIThread(refresh[0], 500);
-            }
-        };
-
-        addLastFmDebugAction(firstRow, getString(R.string.OEGeneralLastFmDebugTest), () -> {
-            String nick = GeneralConfig.lastfmNick();
-            if (TextUtils.isEmpty(nick)) {
-                LastFmNowPlaying.debug("test: nick is not set");
-                return;
-            }
-            LastFmNowPlaying.forget(nick);
-            LastFmNowPlaying.debug("test: " + nick);
-            LastFmNowPlaying.request(nick, (resultNick, track) -> {
-            });
-        });
-        addLastFmDebugAction(firstRow, getString(R.string.OEGeneralLastFmDebugMode),
-                () -> LastFmNowPlaying.setWebMode(!LastFmNowPlaying.isWebMode()));
-        addLastFmDebugAction(firstRow, getString(R.string.OEGeneralLastFmDebugPage), this::showLastFmWebView);
-        addLastFmDebugAction(secondRow, getString(R.string.OEGeneralLastFmDebugCookies), LastFmWebFetcher::resetCookies);
-        addLastFmDebugAction(secondRow, getString(R.string.OEGeneralLastFmDebugClear), LastFmNowPlaying::clearDebug);
-        addLastFmDebugAction(secondRow, getString(R.string.OEGeneralLastFmDebugCopy),
-                () -> AndroidUtilities.addToClipboard(logView.getText()));
-
-        showDialog(dialog, d -> AndroidUtilities.cancelRunOnUIThread(refresh[0]));
-        refresh[0].run();
-    }
-
-    private void addLastFmDebugAction(LinearLayout row, String text, Runnable action) {
-        TextView button = new TextView(getParentActivity());
-        button.setText(text);
-        button.setGravity(Gravity.CENTER);
-        button.setSingleLine(true);
-        button.setEllipsize(TextUtils.TruncateAt.END);
-        button.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-        button.setTypeface(AndroidUtilities.bold());
-        button.setTextColor(getThemedColor(Theme.key_featuredStickers_addButton));
-        button.setBackground(Theme.createSimpleSelectorRoundRectDrawable(dp(8),
-                Theme.multAlpha(getThemedColor(Theme.key_featuredStickers_addButton), 0.1f),
-                Theme.multAlpha(getThemedColor(Theme.key_featuredStickers_addButton), 0.25f)));
-        button.setOnClickListener(v -> action.run());
-        row.addView(button, LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1f,
-                row.getChildCount() == 0 ? 0 : 6, 0, 0, 0));
-    }
-
-    private void showLastFmWebView() {
-        Context context = getParentActivity();
-        if (context == null) {
-            return;
-        }
-        WebView webView = LastFmWebFetcher.debugWebView();
-        AndroidUtilities.removeFromParent(webView);
-        FrameLayout frame = new FrameLayout(context);
-        frame.addView(webView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 420));
-        AlertDialog dialog = new AlertDialog.Builder(context, resourcesProvider)
-                .setTitle(getString(R.string.OEGeneralLastFmDebugPage))
-                .setView(frame)
-                .setPositiveButton(getString(R.string.Close), null)
-                .create();
-        showDialog(dialog, d -> AndroidUtilities.removeFromParent(webView));
-    }
-
-    private void applyLastFmToProfileMusic(String nick) {
-        AlertDialog progress = getParentActivity() != null
-                ? new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_LOADING, resourcesProvider) : null;
-        if (progress != null) {
-            progress.setTitle(getString(R.string.OEGeneralLastFm));
-            progress.setMessage(getString(R.string.OEGeneralLastFmStageDownload));
-            progress.showDelayed(300);
-        }
-        ProfileMusicStamp.apply(currentAccount, nick, new ProfileMusicStamp.Callback() {
-            @Override
-            public void onStage(int stage, int percent) {
-                if (progress == null) {
-                    return;
-                }
-                int resId;
-                if (stage == ProfileMusicStamp.STAGE_DOWNLOAD) {
-                    resId = R.string.OEGeneralLastFmStageDownload;
-                } else if (stage == ProfileMusicStamp.STAGE_PREPARE) {
-                    resId = R.string.OEGeneralLastFmStagePrepare;
-                } else if (stage == ProfileMusicStamp.STAGE_UPLOAD) {
-                    resId = R.string.OEGeneralLastFmStageUpload;
-                } else {
-                    resId = R.string.OEGeneralLastFmStageSave;
-                }
-                progress.setMessage(getString(resId));
-                progress.setProgress(percent);
-            }
-
-            @Override
-            public void onFinished(boolean ok, int reason) {
-                onLastFmApplied(progress, ok, reason);
-            }
-        });
-    }
-
-    private void onLastFmApplied(AlertDialog progress, boolean ok, int reason) {
-        if (progress != null) {
-            progress.dismiss();
-        }
-        if (getParentActivity() == null) {
-            return;
-        }
-        int resId;
-        int icon;
-        if (ok) {
-            resId = R.string.OEGeneralLastFmApplied;
-            icon = R.raw.done;
-        } else if (reason == ProfileMusicStamp.REASON_NO_MUSIC) {
-            resId = R.string.OEGeneralLastFmNoMusic;
-            icon = R.raw.info;
-        } else if (reason == ProfileMusicStamp.REASON_DOWNLOAD) {
-            resId = R.string.OEGeneralLastFmNoFile;
-            icon = R.raw.error;
-        } else if (reason == ProfileMusicStamp.REASON_UPLOAD) {
-            resId = R.string.OEGeneralLastFmNoUpload;
-            icon = R.raw.error;
-        } else {
-            resId = R.string.OEGeneralLastFmFailed;
-            icon = R.raw.error;
-        }
-        BulletinFactory.of(this).createSimpleBulletin(icon, getString(resId)).show();
-    }
-
     private void showRestartHint() {
         if (getParentActivity() == null) {
             return;
@@ -984,10 +799,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     protected boolean onItemLongClick(View view, int position, float x, float y) {
         if (position == pushGatewayRow) {
             showUnifiedPushStatistics();
-            return true;
-        }
-        if (position == lastfmRow) {
-            showLastFmDebug();
             return true;
         }
         return super.onItemLongClick(view, position, x, y);
@@ -1151,7 +962,9 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             switch (holder.getItemViewType()) {
                 case TYPE_HEADER: {
                     HeaderCell cell = (HeaderCell) holder.itemView;
-                    if (position == translateHeaderRow) {
+                    if (position == botPrivacyHeaderRow) {
+                        cell.setText(getString(R.string.FilterBots));
+                    } else if (position == translateHeaderRow) {
                         cell.setText(getString(R.string.OEGeneralTranslateHeader));
                     } else if (position == mapsHeaderRow) {
                         cell.setText(getString(R.string.OEGeneralMapsHeader));
@@ -1286,7 +1099,9 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                         int type = NaConfig.INSTANCE.getIdDcType().Int();
                         CharSequence[] options = idOptions();
                         cell.setTextAndValue(getString(R.string.OEGeneralShowIdAndDc),
-                                options[type < 0 || type >= options.length ? 0 : type], true);
+                                options[type < 0 || type >= options.length ? 0 : type], false);
+                    } else if (position == botPrivacyAccountRow) {
+                        cell.setTextAndValue(getString(R.string.OEBotPrivacyAccount), botPrivacyValue(), false);
                     } else if (position == dnsTypeRow) {
                         CharSequence[] options = dnsTypeOptions();
                         int type = NekoConfig.dnsType.Int();
@@ -1303,11 +1118,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                         String gateway = NaConfig.INSTANCE.getPushServiceTypeUnifiedGateway().String();
                         cell.setTextAndValue(getString(R.string.PushServiceTypeUnifiedGateway),
                                 TextUtils.isEmpty(gateway) ? UnifiedPushService.UP_GATEWAY_DEFAULT : gateway, true);
-                    } else if (position == lastfmRow) {
-                        String nick = GeneralConfig.lastfmNick();
-                        cell.setTextAndValue(getString(R.string.OEGeneralLastFm),
-                                TextUtils.isEmpty(nick) ? getString(R.string.OEGeneralLastFmNotSet) : nick,
-                                false);
                     }
                     break;
                 }
@@ -1325,6 +1135,8 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                         cell.setText(getString(R.string.OEGeneralSpeedBoostInfo));
                     } else if (position == storageDividerRow) {
                         cell.setText(getSavePathInfo());
+                    } else if (position == botPrivacyInfoRow) {
+                        cell.setText(getString(GeneralConfig.botPrivacyAlwaysAsk.Bool() ? R.string.OEBotPrivacyAskPrivacyInfo : R.string.OEBotPrivacyInfo));
                     } else if (position == profileDividerRow) {
                         cell.setText(getString(R.string.OEGeneralShowIdAndDcInfo));
                     } else if (position == archiveDividerRow) {
@@ -1340,14 +1152,14 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
         @Override
         public int getItemViewType(int position) {
-            if (position == mapsHeaderRow || position == notificationsHeaderRow
+            if (position == botPrivacyHeaderRow || position == mapsHeaderRow || position == notificationsHeaderRow
                     || position == translateHeaderRow
                     || position == generalHeaderRow || position == networkHeaderRow
                     || position == speedHeaderRow
                     || position == storageHeaderRow || position == profileHeaderRow
                     || position == archiveHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == mapsDividerRow
+            } else if (position == botPrivacyInfoRow || position == mapsDividerRow
                     || position == notificationsDividerRow
                     || position == generalDividerRow
                     || position == speedDividerRow
@@ -1358,13 +1170,13 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                 return TYPE_SHADOW;
             } else if (position == downloadSpeedRow) {
                 return TYPE_SLIDE;
-            } else if (position == dnsTypeRow || position == customDoHRow
+            } else if (position == botPrivacyAccountRow || position == dnsTypeRow || position == customDoHRow
                     || position == pushServiceTypeRow || position == pushGatewayRow) {
                 return TYPE_SETTINGS;
             } else if (position == mapProviderRow || position == mapPreviewRow
                     || position == pushStatusRow || position == batteryOptimizationRow
                     || position == savePathRow
-                    || position == showIdAndDcRow || position == lastfmRow
+                    || position == showIdAndDcRow
                     || position == translatorRow || position == glyphRow) {
                 return TYPE_SETTINGS;
             }
