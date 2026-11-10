@@ -1,43 +1,198 @@
-# plugins-spec.md — карта файлов системы плагинов mauve
+# plugins-spec.md — система плагинов mauve: устройство и карта файлов
 
-Это не документация и не пересказ логики, а **индекс файлов**: что где лежит и за
-что отвечает. Читай сами файлы — описания тут короткие и нужны, чтобы знать, куда
-смотреть. Многие комментарии в коде на русском, это нормально.
-
-Общая картина:
-
-- Плагины — Python-файлы (`*.plugin`, один модуль) или Elyx-архивы (`*.eaf`, ZIP с
-  `metainfo.yml`). Исполняются в CPython 3.12 через Chaquopy.
-- Java-сторона (`app.exteraless.plugins`) — контроллер, движок, хуки (Xposed/LSPlant
-  через libaliuhook), меню, настройки, UI, **модель разрешений** (главная фича mauve).
-- `com.exteragram.messenger.plugins` — тонкие shim-классы с именами exteraGram, на
-  которые завязаны сторонние плагины. Реальная логика — в `app.exteraless.plugins`.
-- Python-сторона (`TMessagesProj/src/main/python`) — SDK плагинов (API exteraGram) +
-  загрузчик, аудит-гейт, сканер возможностей.
-- Разрешения применяются в двух местах: Python audit hooks (`audit_gate.py`) и
-  Java-гейт (`PluginSinkGate.java`). Выданные права хранятся подписанными
-  (`PluginGrantStore`, `SignedGrantPreferences`).
+Файл состоит из двух частей. Первая — **как устроена система** и прежде всего её
+защита: что где проверяется, как определяется, чей код исполняется, и какие
+границы код признаёт сам. Вторая — **индекс файлов**: что где лежит и за что
+отвечает. Это не пересказ логики, а ориентир, куда смотреть; детали читай в
+самих файлах. Многие комментарии в коде на русском, это нормально.
 
 **Источник истины — только код.** Публичная документация exteraGram (plugins.exteragram.app)
 написана для авторов плагинов и расходится с реальной системой. Не опирайся на неё;
-при любом сомнении читай код и тесты.
+при любом сомнении читай код и тесты. В комментариях встречаются ссылки на
+`PLUGINS-SECURITY.md`, `PLUGINS-API.md`, `PLUGINS-ELYX.md` — этих файлов в
+репозитории нет.
 
 Точки входа для чтения: `PluginsController.java` → `PythonPluginsEngine.java` →
 `extera_utils/plugin_loader.py` → `base_plugin.py`; разрешения — `PluginPermissions.java`,
-`PluginSinkGate.java`, `extera_utils/audit_gate.py`.
+`PluginTrustLevel.java`, `PluginSinkGate.java`, `extera_utils/audit_gate.py`.
+
+## Общая картина
+
+- Плагины — Python-файлы (`*.plugin`, один модуль) или Elyx-архивы (`*.eaf`/`*.elyx`,
+  ZIP с `metainfo.yml`). Все плагины исполняются **в одном интерпретаторе CPython**
+  (Chaquopy) в процессе приложения. Изоляции процессов и интерпретаторов нет,
+  плагины делят `sys.modules`, `builtins` и JVM.
+- Через Chaquopy плагин получает живые Java-объекты (`from java.lang import ...`,
+  `java.jclass`, `find_class`) и может звать любой код приложения и платформы.
+  Поэтому защита стоит и в Python, и в JVM.
+- Java-сторона (`app.exteraless.plugins`) — контроллер, движок, хуки (Xposed API
+  поверх LSPlant, `libaliuhook.so`), меню, настройки, UI, **модель разрешений**
+  (главная фича mauve).
+- `com.exteragram.messenger.plugins` — shim-классы с именами exteraGram, на которые
+  завязаны сторонние плагины. Реальная логика — в `app.exteraless.plugins`.
+- Python-сторона (`TMessagesProj/src/main/python`) — SDK плагинов (API exteraGram),
+  загрузчик, песочница импорта, аудит-гейт, сканер возможностей.
+- Chaquopy — форк (`TMessagesProj/chaquopy`, сабмодуль), в нём доработан мост
+  Python ↔ Java, в том числе **политика рефлексии**, на которую опирается песочница.
+
+## Модель разрешений
+
+**Ключи** (`PluginPermissions.java`, дублируются в `plugin_loader.py` как `PERM_*`):
+`ui` (выдаётся всегда), `messages.read`, `messages.send`, `network`, `files`,
+`intents`, `settings`, `hooks`, `native`. `hooks` и `native` в коде прямо названы
+«full control»: с ними плагин может снять любые проверки.
+
+**Уровни доверия** (`PluginTrustLevel.java`) стоят над разрешениями:
+`ISOLATED` (по умолчанию для новых установок, только `ui`), `GATED` (разрешения по
+одному, без `hooks`/`native`), `TRUSTED` (доступны `hooks`/`native`).
+`PluginPermissions.getEffective` срезает выданное по уровню. Если записи об уровне
+нет, уровень выводится из сохранённых разрешений и записывается.
+
+**Согласие.** Запись `plugin_perms_<id>` пишет лист установки
+(`PluginInstallHelper` → `setGranted` + `setLevel`) до установки файла. Нет записи —
+у плагина только `ui` (плагин попал в каталог в обход листа). Разрешения привязаны
+к **id плагина**, а не к хешу кода. Если плагин ставит другой плагин без `hooks`,
+записи чистятся (`PluginsController.installPlugin`).
+
+**Unsafe mode** (`KEY_UNSAFE_MODE`) — глобальный рубильник: все проверки в Java
+и Python пропускают всё. Включается на `PluginsInfoActivity`.
+
+**Хранение.** Гранты, уровни и unsafe mode лежат в отдельных prefs
+`exteraless_plugin_grants` (`PluginGrantStore`). Каждое значение подписано
+HMAC-ключом из AndroidKeyStore (`SignedGrantPreferences`). Записи без подписи или
+с неверной подписью игнорируются. Если KeyStore недоступен, записи
+принимаются без подписи. Если ключ пропал, все гранты сбрасываются.
+
+## Слои принуждения
+
+Где именно проверяются разрешения. Каждый слой закрывает дыры другого, и
+ни один не задуман полным сам по себе.
+
+Python (`extera_utils/plugin_loader.py:_install_sandbox` ставит всё сразу):
+
+1. **Обёртки импорта** — `builtins.__import__`, `importlib.import_module`,
+   `_PermissionFinder` в `sys.meta_path`. Таблицы `_IMPORT_RULES` (модуль →
+   разрешение или «никогда») и `_INTERNAL_MODULES` (модули движка, плагину не
+   отдаются: `audit_gate`, `plugin_loader`, `dev_server` и др.).
+2. **Обёртка `open`** и fd-guards (`_install_fd_guards`).
+3. **Audit hook PEP 578** (`audit_gate.py`). Проверки по месту действия: процессы
+   (никогда), `ctypes` (`native`), сеть, файлы, `sqlite3`, чтение `f_globals` /
+   `f_locals` у кадров (никогда). Отдельно — защищённые зоны записи: `shared_prefs`,
+   `databases`, код плагинов, данные чужих плагинов. Хук снять нельзя, но вся
+   логика решения живёт в обычных Python-объектах.
+4. **`java.jclass` / `find_class`** (`_install_jclass_guard`, `guard_java_class`):
+   таблицы `_JAVA_CLASS_RULES` (класс → разрешение) и `_JAVA_CLASS_DENIED` (классы
+   движка: `PluginPermissions`, `PluginTrustLevel`, `PluginServices` и т.д.).
+5. **Политика рефлексии** в форке Chaquopy (`set_reflection_policy` /
+   `seal_reflection_policy`). Политика — Python-функция
+   `plugin_loader._reflection_gate`. Плюс зашитый в форк список запрещённых для
+   всех классов (кошелёк TON, KeyStore).
+6. **Метки потоков** (`_install_thread_marking`, `_install_raw_thread_marking`) и
+   охрана dynamic proxy / proxy-классов, чтобы колбэки и потоки плагина сохраняли
+   атрибуцию.
+
+Java:
+
+7. **`PluginSinkGate`** — LSPlant-хуки на стоки JVM: `Runtime.exec` /
+   `ProcessBuilder` (никогда), загрузка `.so` (`native`), `URL.openConnection` /
+   `Socket.connect` / WebView / `DownloadManager` / `MediaPlayer` /
+   `ImageLoader.loadHttpFile` (`network`), конструкторы dex-загрузчиков (`hooks`),
+   `Class.forName` по списку имён, системные окна поверх других (`hooks`),
+   отправка через `SendMessagesHelper` (`messages.send`), `ConnectionsManager.sendRequest`
+   (право выбирается по имени TL-запроса), файловые стоки (`IoBridge.open`,
+   `File.delete`, `Os.*`, SQLite), `getSharedPreferences` для prefs грантов и чужих
+   настроек. Проверка срабатывает, только если атрибуция нашла плагин (см. ниже).
+8. **Точки входа API.** `PluginServices` проверяет `hooks` / `files` / `intents` у
+   переданного `pluginId`. Регистрация хуков в контроллере проверяет
+   `messages.send` (хук отправки) и `messages.read` (request/update-хуки).
+   Управляющие методы зовут `PluginSinkGate.refuseFromPlugin` / `refuseForeign`.
+9. **`MessagesStorage.getDatabase()`** → `PluginSinkGate.allowDatabaseAccess`
+   (`messages.read`).
+10. **MVEL** — Java-выражения из плагина исполняются в трёх местах: условие
+    видимости пункта меню (`MenuInjector`, regex-денилист `UNSAFE_CONDITION`),
+    фильтры хуков (`HookFilter`), методы прокси-классов (`ClassProxyFactory`).
+
+## Атрибуция: чей это код
+
+От атрибуции зависит всё: если она вернула «никто», действие считается действием
+приложения и не проверяется.
+
+- **Python:** владелец кадра определяется по `co_filename` (`_owner_of_frame` →
+  `_resolve_owner`). `plugin_frame_owner` смотрит весь стек (до 60 кадров) и при
+  нескольких плагинах выбирает наименее доверенного (`_least_trusted`).
+  `_direct_plugin_caller` берёт первый кадр вне машинерии импорта.
+  `compile` / `exec` с путём чужого плагина запрещены (`audit_gate._foreign_code_owner`).
+- **Python → Java:** `plugin_context` / `java_runtime_mark` ставят
+  `PluginRuntime` (ThreadLocal) при диспатче хуков, в `android_utils.safe_call` и в
+  размеченных потоках.
+- **Java:** `PluginRuntime.current()`. Если метки нет, но на потоке исполняется
+  Python-колбэк (хук на `PyInvocationHandler.invoke` → `isPythonActive`) или
+  стек похож на вызов из нативного кода (`calledFromNative`), владелец достаётся
+  из Python-стека (`PythonPluginsEngine.pluginFromPythonStack`).
+- **Послабления по флагам потока** в `plugin_loader._context_state`:
+  `engine_lookup` (SDK берёт свои классы), `engine_write` (движок пишет в
+  защищённые зоны), `import_barrier`, `open_checked`.
+- Почти все проверки на сбое атрибуции или моста **пропускают** действие
+  (`has_permission` → `True` при исключении, `refuseFromPlugin` → `false` при
+  неизвестном вызывающем). Это осознанный выбор ради совместимости.
+
+## Что код сам признаёт границами
+
+Это не находки, но их надо держать в голове: ревью ищет обходы **сверх** этого
+и расхождения между заявленным и реальным.
+
+- `PluginPermissions.java` (javadoc): плагин в том же процессе с доступом к Java
+  обойдёт любую проверку мимо SDK. Цель модели — сделать намерения видимыми и
+  ограничить случайный вред, а не построить границу против атакующего. При этом
+  `README.md` подаёт безопасность как главную фичу («gets only what it declared»).
+  С тех пор гейт заметно усилили, поэтому оценка «против атакующего держит / не
+  держит» — часть ревью.
+- `hooks` и `native` = полный контроль, уровень `TRUSTED` предупреждает об этом.
+- Отложенная работа (Runnable, свой поток) закрыта частично: метки потоков и
+  хук `PyInvocationHandler`.
+- Горячие `java.io`-пути не хукаются. Файловая сторона в JVM держится на
+  `IoBridge.open` и эвристике `directFromPython`.
+- Скан возможностей (`capability_scan.py`) — подсказка для UI, а не граница.
+
+## Прочие механики
+
+- **Потоки.** У движка однопоточный executor (`PythonPluginsEngine`). Хуки
+  запросов, апдейтов и отправки зовутся синхронно на потоках сети и UI, под GIL.
+  `PythonThreadState` закрепляет thread state за часто зовущими потоками.
+- **Установка.** `PluginInstallBottomSheet` (метаданные, скан, выбор уровня и прав)
+  → `PluginInstallHelper` (пишет согласие) → `PluginsController.installPlugin`:
+  метаданные через AST (`metadata_parser.py`), проверка id по regex, копия в
+  `plugins/<id>.<ext>`, загрузка. Обновление файла с тем же id сохраняет гранты.
+- **Dev-сервер** (`dev_server.py`) — только в developer mode (флаг в prefs
+  контроллера), `127.0.0.1:42690`, построчный JSON. Токен лежит в
+  `plugins/.devserver_token` и пишется в лог. Команды: список плагинов,
+  включение/выключение, reload, `write_plugin`, удаление, отладчик, Elyx.
+- **Watchdog / safe mode** (`PluginsWatchdog`). Детект зависаний по таймауту.
+  Файл `plugins/.watchdog` с id активного плагина для атрибуции нативных крэшей.
+  Плагин отключается при Java-исключении из Python, а повторные крэши на старте
+  включают safe mode.
+- **Elyx** (`elyx_runtime/`) — распаковка по хешу содержимого, bundled wheels,
+  отдельное пространство имён `ElyxPlugins.<id>`.
+- **pip** (`pip_controller.py`) — PyPI JSON API, только pure-Python wheels, общий
+  `plugins/shared_libs/` со счётчиком ссылок.
+- **Настройки плагинов** — SharedPreferences `<SETTINGS_PREFS_PREFIX><id>` на
+  Java-стороне, зеркало в `plugin_settings.py`. Доступ к чужим настройкам
+  проверяется в `PluginsController.pluginPrefs` и `PluginSinkGate.hookGrantStore`.
+
+# Карта файлов
 
 ## Java: ядро — `TMessagesProj/src/main/java/app/exteraless/plugins/`
 
 | Файл | Назначение |
 |---|---|
-| `PluginsController.java` | Центральный контроллер: реестр плагинов, загрузка/выгрузка, включение/выключение, приоритеты, диспатч хуков (отправка сообщений, запросы, апдейты), настройки плагинов. Самый большой файл системы. |
-| `PythonPluginsEngine.java` | Запуск Chaquopy/CPython, инициализация Python-рантайма, вызовы в `plugin_loader`, dev-сервер (порт 42690, только developer mode). |
-| `PythonBridge.java` | Обёртки вызовов Java → Python. |
+| `PluginsController.java` | Центральный контроллер: реестр плагинов, установка, загрузка/выгрузка, включение/выключение, приоритеты, диспатч хуков (отправка сообщений, запросы, апдейты), меню, настройки плагинов, флаги safe/unsafe/developer mode. Привилегированные методы защищены вызовами `PluginSinkGate.refuseFromPlugin` / `refuseForeign` в теле метода, а не запретом класса. Самый большой Java-файл системы. |
+| `PythonPluginsEngine.java` | Запуск Chaquopy/CPython, инициализация Python-рантайма, вызовы в `plugin_loader` (хуки, настройки, загрузка), `pluginFromPythonStack` для атрибуции, `pathPermission` для файловых стоков, старт dev-сервера (только developer mode). |
+| `PythonBridge.java` | Статический фасад, который SDK зовёт из Python: настройки, лог, регистрация хуков и меню, проверка прав. `pluginId` приходит аргументом. В списках запрещённых классов его нет. |
 | `PythonThreadState.java` | Учёт Python-потоков/GIL на стороне Java (парный к `extera_utils/thread_state.py`). |
-| `PluginRuntime.java` | Контекст «чей код сейчас выполняется» (атрибуция pluginId для Java-гейтов). |
+| `PluginRuntime.java` | ThreadLocal «чей код сейчас выполняется» и счётчик активных Python-колбэков (атрибуция для Java-гейтов). |
 | `Plugin.java` | Модель плагина: метаданные (`__id__`, `__name__`, версия, иконка, `requires` Elyx и т.д.), состояние. |
 | `PluginsConstants.java` | Константы, ключи настроек, флаги safe mode / developer mode. |
-| `PluginServices.java` | Сервисы, доступные плагинам из сгенерированного байткода/прокси. |
+| `PluginServices.java` | Вход SDK в подсистемы: Xposed-хуки, прокси-классы, обработчики файлов и интентов, UI-поток. Права проверяются у переданного `pluginId`. Сам класс плагину запрещён, но модули SDK держат на него ссылки. |
 | `PluginMediaServices.java` | Медиа-сервисы для плагинов. |
 | `PluginViewProxies.java` | Прокси/регистрация View, созданных плагинами; освобождение при уходе с экрана. |
 | `ClassAliases.java` | Отображение имён Java-классов exteraGram → классы mauve (Java-часть, парная `extera_utils/class_aliases.py`). |
@@ -56,9 +211,9 @@
 |---|---|
 | `PluginPermissions.java` | Список разрешений (сеть, файлы, хуки/Xposed, class proxy, рефлексия и т.д.) и проверки. |
 | `PluginTrustLevel.java` | Уровни доверия плагина. |
-| `PluginGrantStore.java` | Хранилище выданных прав. |
-| `SignedGrantPreferences.java` | Подписанное хранение грантов (защита от подмены prefs плагином). |
-| `PluginSinkGate.java` | Java-гейт на «стоки» в JVM: `URL.openConnection`, `Runtime.exec`, файлы, рефлексия и т.п. Пара к Python `audit_gate.py`. |
+| `PluginGrantStore.java` | Отдельные prefs для грантов, уровней и unsafe mode, миграция из старых prefs, `isOwnCall` по стеку. |
+| `SignedGrantPreferences.java` | Обёртка SharedPreferences: HMAC-подпись записей ключом из AndroidKeyStore, проверка при чтении. |
+| `PluginSinkGate.java` | Java-гейт на стоки в JVM (список — в разделе «Слои принуждения»), атрибуция на Java-стороне (`enterCheck`, `calledFromNative`, `directFromPython`), `refuseFromPlugin` / `refuseForeign` для управляющих методов. Пара к Python `audit_gate.py`. |
 | `PluginCapabilityScan.java` | Статический скан «что плагин может делать» (вызывает `extera_utils/capability_scan.py`), показ в UI до запуска. |
 | `PluginAuditJournal.java` | Журнал действий/отказов (кольцевой буфер Java + слияние с Python-гейтом). |
 | `PluginDenialNotice.java` | Уведомление пользователя об отказе в доступе. |
@@ -68,13 +223,13 @@
 | Файл | Назначение |
 |---|---|
 | `xposed/XposedHooks.java` | Регистрация/снятие хуков методов (XposedBridge, `libaliuhook.so`). |
-| `xposed/HookGate.java` | Гейт на установку хуков (проверка прав, целевые методы). |
-| `xposed/HookFilter.java` | Java-фильтры срабатывания хука (из `filtersJson`), чтобы не ходить в Python зря. |
+| `xposed/HookGate.java` | Не проверка прав: закрывает гонку установки хука в Aliuhook (барьер до появления backup). Права на хуки проверяет `PluginServices`. |
+| `xposed/HookFilter.java` | Java-фильтры срабатывания хука (из `filtersJson`), чтобы не ходить в Python зря. Поддерживает MVEL-выражения. |
 | `xposed/HookStats.java`, `xposed/HookNumbers.java` | Статистика/счётчики хуков. |
 | `xposed/PyMethodHook.java` | before/after-хук → Python `before_hooked_method` / `after_hooked_method`. |
 | `xposed/PyMethodReplacement.java` | Хук-замена → Python `replace_hooked_method`. |
-| `utils/ClassProxyFactory.java` | Генерация Java-классов-прокси (подклассы на байткоде) для Python class-proxy DSL (`extera_utils/classes.py`). |
-| `menus/MenuInjector.java` | Встраивание пунктов меню плагинов (сообщение, чат, профиль, drawer и т.д.). |
+| `utils/ClassProxyFactory.java` | Генерация Java-классов-прокси (dexmaker, `InMemoryDexClassLoader`) для Python class-proxy DSL (`extera_utils/classes.py`). Методы диспатчатся в Python или исполняют MVEL. |
+| `menus/MenuInjector.java` | Встраивание пунктов меню плагинов (сообщение, чат, профиль, drawer и т.д.). Условие видимости — MVEL с regex-денилистом. |
 | `menus/PluginsMenuWrapper.java` | Обёртка/контейнер меню плагинов. |
 | `intents/IntentsDispatcher.java` | Java-часть IntentsManager: before/after-хендлеры ссылок и интентов (парный `intents.py`). |
 | `files/FilesControllerJava.java` | Реестр обработчиков открытия файлов по расширению. |
@@ -119,7 +274,8 @@ Shim-классы под имена exteraGram (плагины и dex-модул
 - `org/telegram/tgnet/ConnectionsManager.java` — хуки запросов/ответов (pre/post request).
 - `org/telegram/messenger/MessagesController.java` — хуки апдейтов.
 - `org/telegram/messenger/SendMessagesHelper.java` — хук отправки сообщений.
-- `org/telegram/messenger/MessagesStorage.java`, `AndroidUtilities.java`, `browser/Browser.java` — ссылки/интенты, файлы.
+- `org/telegram/messenger/MessagesStorage.java` — `getDatabase()` спрашивает `PluginSinkGate.allowDatabaseAccess`.
+- `org/telegram/messenger/AndroidUtilities.java`, `browser/Browser.java` — открытие файлов и ссылок (обработчики плагинов).
 - `org/telegram/ui/LaunchActivity.java` — открытие `.plugin`-файлов, интенты, safe mode.
 - `org/telegram/ui/ChatActivity.java`, `ProfileActivity.java`, `DialogsActivity.java` — меню плагинов.
 - `org/telegram/ui/Components/UItem.java`, `SharedMediaLayout.java`, `SearchDownloadsContainer.java`, `FilteredSearchView.java` — UI-интеграция (ячейки, файлы плагинов).
@@ -146,7 +302,7 @@ Shim-классы под имена exteraGram (плагины и dex-модул
 | `plugin_settings.py` | Хранилище настроек плагинов (`get_setting`/`set_setting`). |
 | `intents.py` | IntentsManager: before/after-хендлеры ссылок/интентов. |
 | `pip_controller.py` | Мини-pip для `__requirements__`. |
-| `dev_server.py` | Dev-сервер TCP/JSON на 127.0.0.1:42690 (live reload). |
+| `dev_server.py` | Dev-сервер TCP/JSON на 127.0.0.1:42690 (live reload, установка плагинов). Токен в `plugins/.devserver_token`. |
 | `ui/settings.py` | Декларации элементов настроек (`Header`, `Switch`, `Selector`, `Input`, `Text`, `Divider`, …). |
 | `ui/alert.py` | Обёртка `AlertDialog`. |
 | `ui/bulletin.py` | `BulletinHelper` (уведомления). |
@@ -156,7 +312,7 @@ Shim-классы под имена exteraGram (плагины и dex-модул
 
 | Файл | Назначение |
 |---|---|
-| `extera_utils/plugin_loader.py` | Java-facing загрузчик: импорт плагинов, жизненный цикл (`on_plugin_load`/`unload`), диспатч хуков, меню, настройки. Самый большой Python-файл. |
+| `extera_utils/plugin_loader.py` | Java-facing загрузчик и **песочница**: обёртки импорта и `open`, атрибуция по стеку, `has_permission` / `require_permission`, guard для `jclass` и рефлексии, метки потоков, импорт плагинов, жизненный цикл (`on_plugin_load`/`unload`), диспатч хуков, меню, настройки. Самый большой файл системы (~3.8k строк). |
 | `extera_utils/metadata_parser.py` | Статическое чтение метаданных (`__id__`, `__name__`, …) через AST, без исполнения. |
 | `extera_utils/audit_gate.py` | Гейт на audit hooks (PEP 578): применение разрешений на уровне действий (сеть, файлы, subprocess, импорт…). |
 | `extera_utils/capability_scan.py` | Статический скан возможностей плагина по исходнику. |
@@ -179,8 +335,15 @@ Shim-классы под имена exteraGram (плагины и dex-модул
 - `TMessagesProj/build.gradle` — плагин `com.chaquo.python`, блок `python {}`, `ndk.abiFilters`
   (только `arm64-v8a`, `x86_64`), задачи сборки Chaquopy-рантайма из сабмодуля
   (`CHAQUOPY_BUILD_PYTHON`).
-- `TMessagesProj/chaquopy/` — сабмодуль (форк Chaquopy, ветка `exteraless`), скрипт `exteraless/build.sh`.
-  Инициализируется `git submodule update --init`.
+- `TMessagesProj/chaquopy/` — сабмодуль (форк Chaquopy 17.0.0, ветка `exteraless`), скрипт
+  `exteraless/build.sh`. Инициализируется `git submodule update --init TMessagesProj/chaquopy`.
+  Что изменено — `exteraless/README.md`. Для ревью важны:
+  - `product/runtime/src/main/python/java/chaquopy.pyx` — `set_reflection_policy`,
+    `seal_reflection_policy`, `get_reflection_policy`, зашитый `DENIED_CLASS_PREFIXES`;
+  - `java/class.pxi` — проверка политики на рефлексивных вызовах, `GuardedMethod`;
+  - `java/utils.pxi` (`cast`), `java/conversion.pxi` — остальные точки `class_denied`;
+  - тесты `product/runtime/src/test/python/chaquopy/test/test_reflection_gate.py`,
+    `test_denied_classes.py`.
 - `TMessagesProj/proguard-rules.pro` — `-keep class app.exteraless.plugins.** { *; }` и прочее,
   достижимое только из Python через рефлексию. Ломается при R8 — смотри сюда.
 - `TMessagesProj/src/main/AndroidManifest.xml` — intent-filter на открытие `*.plugin` файлов.
