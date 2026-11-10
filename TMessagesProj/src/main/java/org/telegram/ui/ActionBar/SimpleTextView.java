@@ -51,6 +51,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
+import app.exteraless.badges.NameIconPairDrawable;
+
 public class SimpleTextView extends View implements Drawable.Callback {
 
     private float layoutX, layoutY;
@@ -922,7 +924,7 @@ public class SimpleTextView extends View implements Drawable.Callback {
         if (rightDrawable2 != null && !rightDrawableHidden && rightDrawableScale > 0 && !rightDrawableOutside && !rightDrawableInside) {
             int x = textOffsetX + textWidth + drawablePadding + (int) -scrollingOffset;
             if (rightDrawable != null) {
-                x += (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale) + drawablePadding;
+                x += (int) (NameIconPairDrawable.contentWidth(rightDrawable) * rightDrawableScale) + drawablePadding;
             }
             if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL ||
                     (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT) {
@@ -976,7 +978,7 @@ public class SimpleTextView extends View implements Drawable.Callback {
                 int dh = (int) (rightDrawable2.getIntrinsicHeight() * rightDrawableScale);
                 int x = textOffsetX + textWidth + drawablePadding + (int) -scrollingOffset + nextScrollX;
                 if (rightDrawable != null) {
-                    x += (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale) + drawablePadding;
+                    x += (int) (NameIconPairDrawable.contentWidth(rightDrawable) * rightDrawableScale) + drawablePadding;
                 }
                 int y;
                 if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == Gravity.CENTER_VERTICAL) {
@@ -1067,7 +1069,7 @@ public class SimpleTextView extends View implements Drawable.Callback {
             if (rightDrawable2 != null && !rightDrawableHidden && rightDrawableScale > 0 && !rightDrawableOutside && rightDrawableInside) {
                 int x = textOffsetX + textWidth + drawablePadding + (int) -scrollingOffset;
                 if (rightDrawable != null) {
-                    x += (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale) + drawablePadding;
+                    x += (int) (NameIconPairDrawable.contentWidth(rightDrawable) * rightDrawableScale) + drawablePadding;
                 }
                 if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL ||
                         (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT) {
@@ -1151,7 +1153,7 @@ public class SimpleTextView extends View implements Drawable.Callback {
                     getMaxTextWidth() - paddingRight + drawablePadding
             );
             if (rightDrawable != null) {
-                x += (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale) + drawablePadding;
+                x += (int) (NameIconPairDrawable.contentWidth(rightDrawable) * rightDrawableScale) + drawablePadding;
             }
             int dw = (int) (rightDrawable2.getIntrinsicWidth() * rightDrawableScale);
             int dh = (int) (rightDrawable2.getIntrinsicHeight() * rightDrawableScale);
