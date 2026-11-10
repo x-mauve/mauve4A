@@ -9,6 +9,8 @@ import android.graphics.drawable.Drawable;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import org.telegram.ui.Components.AnimatedEmojiDrawable;
+
 /**
  * Draws two name icons next to each other. Views like {@link org.telegram.ui.ActionBar.SimpleTextView}
  * give a name only two side drawables, so the mauve icon shares one of them with the status icon.
@@ -28,8 +30,27 @@ public final class NameIconPairDrawable extends Drawable {
     @Override
     public void draw(@NonNull Canvas canvas) {
         Rect bounds = getBounds();
-        int x = drawIcon(canvas, first, bounds.left, bounds.centerY());
-        drawIcon(canvas, second, x + gap, bounds.centerY());
+        drawIcon(canvas, first, bounds.left, bounds.centerY());
+        drawIcon(canvas, second, bounds.left + contentWidth(first) + gap, bounds.centerY());
+    }
+
+    /**
+     * Width the drawable actually paints. A swap drawable sized for animated emoji draws a plain
+     * icon (like the premium star) at its own smaller size, pinned to the left, which would
+     * otherwise leave an empty strip before the next icon.
+     */
+    public static int contentWidth(Drawable drawable) {
+        if (drawable instanceof AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) {
+            AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable swap = (AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) drawable;
+            Drawable inner = swap.getDrawable();
+            if (!swap.center && inner != null && !(inner instanceof AnimatedEmojiDrawable)) {
+                int width = inner.getIntrinsicWidth();
+                if (width > 0 && width < swap.getIntrinsicWidth()) {
+                    return width;
+                }
+            }
+        }
+        return drawable.getIntrinsicWidth();
     }
 
     private static int drawIcon(Canvas canvas, Drawable drawable, int x, int centerY) {
@@ -42,7 +63,7 @@ public final class NameIconPairDrawable extends Drawable {
 
     @Override
     public int getIntrinsicWidth() {
-        return first.getIntrinsicWidth() + gap + second.getIntrinsicWidth();
+        return contentWidth(first) + gap + second.getIntrinsicWidth();
     }
 
     @Override
