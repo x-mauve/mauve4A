@@ -18,6 +18,10 @@
   Java-гейт (`PluginSinkGate.java`). Выданные права хранятся подписанными
   (`PluginGrantStore`, `SignedGrantPreferences`).
 
+**Источник истины — только код.** Публичная документация exteraGram (plugins.exteragram.app)
+написана для авторов плагинов и расходится с реальной системой. Не опирайся на неё;
+при любом сомнении читай код и тесты.
+
 Точки входа для чтения: `PluginsController.java` → `PythonPluginsEngine.java` →
 `extera_utils/plugin_loader.py` → `base_plugin.py`; разрешения — `PluginPermissions.java`,
 `PluginSinkGate.java`, `extera_utils/audit_gate.py`.
