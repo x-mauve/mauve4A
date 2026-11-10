@@ -81,6 +81,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import app.exteraless.badges.ExtraBadgesController;
+import app.exteraless.badges.NameIconPairDrawable;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
@@ -4080,13 +4081,17 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     private GradientDrawable archiveFadeGradientDrawable;
     private int archiveFadeGradientDrawableColor;
 
-    // The premium status takes 22dp starting 2dp before nameMuteLeft; nameMutedIconLeft is the
-    // mute icon slot further out, so placing the badge there left a wide gap after the status.
+    // The premium status box is 22dp wide and starts 2dp before nameMuteLeft, but the plain
+    // premium star inside it is narrower and pinned left, so measure what is actually drawn.
     private int getNameBadgeLeft() {
         if (!drawPremium) {
             return nameMuteLeft;
         }
-        return LocaleController.isRTL ? nameMuteLeft - dp(24) : nameMuteLeft + dp(22);
+        if (LocaleController.isRTL) {
+            return nameMuteLeft - dp(24);
+        }
+        int statusWidth = emojiStatus != null ? NameIconPairDrawable.contentWidth(emojiStatus) : dp(22);
+        return nameMuteLeft - dp(2) + statusWidth + dp(3);
     }
 
     @SuppressLint("DrawAllocation")
@@ -4852,6 +4857,10 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                     y -= dp(9);
                 }
                 float x = getNameBadgeLeft();
+                // The status box is 22dp tall at y - 4dp; keep the 20dp badge on the same center line
+                if (drawPremium) {
+                    y -= dp(2);
+                }
                 if (rightFragmentOpenedProgress > 0) {
                     nameBadgeDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
                     nameBadgeDrawable.setBounds((int) x, y - dp(1), (int) x + dp(20), y + dp(19));
