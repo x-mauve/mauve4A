@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Upstream:** synced with exteraless, now based on Telegram for Android 13.2.1.
+  This brings word-synced lyrics from more sources, player covers from Apple Music,
+  queue reordering by drag, category tabs in the channel feed, a startup folder
+  option, bot privacy settings, units and currency rates in inline results,
+  a wider plugin SDK with stricter permissions, and many crash fixes.
+
+### Removed
+
+- **Player:** the Last.fm now playing feature, removed upstream.
+- **Profile:** the mute icon next to the name, dropped in the upstream profile redesign.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added
