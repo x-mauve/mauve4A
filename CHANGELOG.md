@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Player:** the Last.fm now playing feature, removed upstream.
 - **Profile:** the mute icon next to the name, dropped in the upstream profile redesign.
 
+### Fixed
+
+- **Badges:** the mauve badge no longer sits far from the premium star
+  in the chat list, chat header, and profile.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added
