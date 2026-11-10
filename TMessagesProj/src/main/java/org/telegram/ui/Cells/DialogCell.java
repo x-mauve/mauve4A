@@ -4080,6 +4080,15 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     private GradientDrawable archiveFadeGradientDrawable;
     private int archiveFadeGradientDrawableColor;
 
+    // The premium status takes 22dp starting 2dp before nameMuteLeft; nameMutedIconLeft is the
+    // mute icon slot further out, so placing the badge there left a wide gap after the status.
+    private int getNameBadgeLeft() {
+        if (!drawPremium) {
+            return nameMuteLeft;
+        }
+        return LocaleController.isRTL ? nameMuteLeft - dp(24) : nameMuteLeft + dp(22);
+    }
+
     @SuppressLint("DrawAllocation")
     @Override
     protected void onDraw(Canvas canvas) {
@@ -4753,7 +4762,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 }
                 int muteAnchor = drawPremium ? nameMutedIconLeft : nameMuteLeft;
                 if (drawNameBadge) {
-                    muteAnchor += LocaleController.isRTL ? -dp(22) : dp(22);
+                    muteAnchor = LocaleController.isRTL ? muteAnchor - dp(22) : getNameBadgeLeft() + dp(22);
                 }
                 float muteX = muteAnchor - dp(useForceThreeLines || SharedConfig.useThreeLinesLayout ? 0 : 1);
                 float muteY = dp(SharedConfig.useThreeLinesLayout ? 13.5f : 17.5f);
@@ -4842,12 +4851,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 if ((!(useForceThreeLines || SharedConfig.useThreeLinesLayout) || isForumCell()) && hasTags()) {
                     y -= dp(9);
                 }
-                float x;
-                if (LocaleController.isRTL) {
-                    x = drawPremium ? nameMuteLeft - dp(24) : nameMuteLeft;
-                } else {
-                    x = drawPremium ? nameMutedIconLeft : nameMuteLeft;
-                }
+                float x = getNameBadgeLeft();
                 if (rightFragmentOpenedProgress > 0) {
                     nameBadgeDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
                     nameBadgeDrawable.setBounds((int) x, y - dp(1), (int) x + dp(20), y + dp(19));
