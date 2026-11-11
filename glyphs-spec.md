@@ -7,6 +7,9 @@ Notion, «v0.3.0: Not Enough Glyphs!».
 коммиты `9d15b912d`, `74cb562f3`). Номера строк актуальны на ветке `v0.3.0`
 (`75dac3e8f`) и поплывут, поэтому ищи по именам.
 
+Все про сам SDK (методы, раскладки зон по моделям, ограничения) лежит в
+`glyphs-api-spec.md`. Здесь только то, как mauve им пользуется.
+
 ## 1. Текущая система
 
 ### 1.1 Карта файлов
@@ -34,25 +37,31 @@ Notion, «v0.3.0: Not Enough Glyphs!».
   - **strip** (LED-зоны): все остальные, через `GlyphManager`. Регистрируются
     `20111`, `22111`, `23111`, `23113`, `24111`, `25111`. Если модель не из списка,
     `register` не вызывается и сессия не открывается (тихо, без лога).
-- Коды моделей по документации Nothing (перепроверить перед использованием):
-  20111 Phone (1), 22111 Phone (2), 23111 Phone (2a), 23113 Phone (2a) Plus,
-  24111 Phone (3a)/(3a) Pro, 23112 Phone (3), 25111 Phone (4a), 25111p Phone (4a) Pro.
+- Коды моделей (подтверждено README и байткодом SDK): 20111 Phone (1),
+  22111 Phone (2), 23111 Phone (2a), 23113 Phone (2a) Plus, 24111 Phone (3a) и
+  (3a) Pro, 23112 Phone (3), 25111 Phone (4a), 25111p Phone (4a) Pro.
+- Не поддержаны: Phone (4b) (код 25131, в нашей сборке AAR его нет, нужна более
+  новая из `Glyph-Developer-Kit/sdk/`) и Phone (3a) Lite (в SDK отсутствует
+  совсем).
 - Жизненный цикл strip: `init(callback)` → `onServiceConnected` → `register(device)`
   → `openSession()` → `stripSessionOpen = true`. Matrix: `init` → `register` →
   `matrixRegistered = true`. Бинд асинхронный, флаги `volatile`.
-- Ключ `test` отладочный (на устройстве нужен включенный Glyph debug mode), боевой
-  выдается Nothing под package name и подставляется через `GLYPH_API_KEY`
-  (`local.properties` или env).
+- Ключ `test` отладочный: работает только с включенным через adb debug-режимом,
+  который сам выключается через 48 часов. На Android 16 (Nothing OS 4.0) ключ
+  не проверяется вообще, кроме Phone (1). Боевой ключ подставляется через
+  `GLYPH_API_KEY` (`local.properties` или env). Подробности в
+  `glyphs-api-spec.md`, 1.3.
 
 Что SDK умеет, но код не использует (важно для будущих анимаций и выбора зон):
 
 - `GlyphFrame.Builder`: `buildChannel(int)` и `buildChannel(int, int)` для
-  отдельных зон, плюс `buildPeriod/Cycles/Interval`. Индексы зон лежат в
-  `Glyph.Code_20111/22111/23111/24111/25111` (например у 25111 только `A_1..A_6`,
-  у 24111 `A_1..A_11, B_1..B_5, C_1..C_20`). Класса `Code_23113` в AAR нет.
-- `GlyphManager`: `toggle(frame)`, `animate(frame)`, `displayProgress(...)`,
-  `displayProgressAndToggle(...)`, `setFrameColors(int[])`, `turnOff()`,
-  `closeSession()`.
+  отдельных каналов и их яркости, плюс `buildPeriod/Cycles/Interval`. Индексы
+  лежат в `Glyph.Code_*`, раскладки по моделям в `glyphs-api-spec.md`, раздел 4.
+  Для 23113 используется `Code_23111`.
+- `GlyphManager.setFrameColors(int[])`: сырой кадр яркостей. Единственный способ
+  сделать анимацию, отличную от встроенного «дыхания» `animate()`.
+- `GlyphManager`: `toggle(frame)`, `displayProgress(...)`,
+  `displayProgressAndToggle(...)`, `closeSession()`.
 - `GlyphMatrixManager`: `setMatrixFrame` / `setAppMatrixFrame` (от объекта или от
   сырого `int[]`), `closeAppMatrix()`, `setGlyphMatrixTimeout(boolean)`, `turnOff()`.
 - `GlyphMatrixObject.Builder`: картинка, текст, позиция, поворот, масштаб, яркость,
@@ -166,10 +175,23 @@ Bitmap лого кэшируется в `matrixLogoBitmap`. `setAppMatrixFrame` 
   только факт «что-то пришло»;
 - фильтр уведомлений неполный (см. 1.6, п. 2), вспышка возможна без уведомления;
 - strip: каналы задаются только целиком A..E, без отдельных зон и без учета
-  раскладки конкретной модели;
+  раскладки конкретной модели. На моделях без зон D/E (все, кроме Phone (1) и
+  (2)) эти вызовы пустые, так что по факту всегда горит все;
+- сессия открывается на старте и не закрывается, пока фича включена. По
+  сообщениям разработчиков открытая сессия гасит системный индикатор Essential
+  Notifications; README требует закрывать сессию, когда глифы не нужны;
+- после `pulseStrip()` нет `turnOff()`; SDK явный ноль в конце `animate` не шлет;
+- `animate()` дает одну форму (линейное «дыхание» до полной яркости) и ломается
+  при `period > 8192` мс; текущие 600 и 1500 в безопасных пределах;
+- README разрешает SDK только foreground-приложениям. Сообщения приходят, когда
+  приложение в фоне; работает ли вспышка в этом случае, нужно проверить на
+  устройстве;
+- бинд к сервису идет сразу в `ApplicationLoader`; после ребута ранний `init`
+  может не сработать (см. `glyphs-api-spec.md`, 1.4);
 - на `onServiceDisconnected` нет переподключения, а `initialized` остается true,
   так что `init()` повторно не биндит до `shutdown()`;
-- незарегистрированная strip-модель молча ничего не делает;
+- незарегистрированная strip-модель (сейчас это Phone (4b) и (3a) Lite) молча
+  ничего не делает, при этом строка настроек на ней видна;
 - нет приоритетов между событиями: вспышка сообщения во время записи/звонка
   просто отбрасывается;
 - комментарии в коде глифов на русском; по `AGENTS.md` при правке переводить на
