@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Badges:** the mauve badge in the chat list now sits as close to the name as
   in the chat header and profile when the user has no Premium status.
+- **Badges:** the Premium status and the mauve badge after it no longer sit
+  above the middle of the name in the chat list.
 
 ## [0.2.1] - 2026-11-10
 
