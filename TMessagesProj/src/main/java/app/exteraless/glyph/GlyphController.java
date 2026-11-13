@@ -126,6 +126,9 @@ public final class GlyphController {
                 return;
             }
             Set<String> zones = resolveZones(GlyphEvent.MESSAGE, dialogId);
+            if (zones == null) {
+                return;
+            }
             long now = SystemClock.uptimeMillis();
             if (zones.equals(lastFlashZones) && now - lastFlashAt < RETRIGGER_GUARD_MS) {
                 return;
@@ -141,6 +144,11 @@ public final class GlyphController {
             return;
         }
         handler.post(() -> {
+            // A disabled rule means the event is not tracked at all, so it
+            // neither breathes nor holds back message flashes.
+            if (!GlyphRules.resolve(GlyphEvent.RECORDING, 0).enabled) {
+                return;
+            }
             recordingActive = true;
             updateActiveEvent();
         });
@@ -160,6 +168,9 @@ public final class GlyphController {
             return;
         }
         handler.post(() -> {
+            if (!GlyphRules.resolve(GlyphEvent.CALL, dialogId).enabled) {
+                return;
+            }
             callActive = true;
             callDialogId = dialogId;
             updateActiveEvent();
@@ -207,7 +218,8 @@ public final class GlyphController {
         GlyphEngine local = readyEngine();
         if (local != null) {
             long dialogId = event == GlyphEvent.CALL ? callDialogId : 0;
-            local.play(resolveZones(event, dialogId), GlyphEffects.BREATHE);
+            Set<String> zones = resolveZones(event, dialogId);
+            local.play(zones != null ? zones : allZones(), GlyphEffects.BREATHE);
         }
     }
 
@@ -224,9 +236,16 @@ public final class GlyphController {
         return initialized ? engine : null;
     }
 
-    /** Zones to light for an event. {@code dialogId} is 0 when the event has no chat. */
+    /**
+     * Zones to light for an event, or null when its rule is turned off.
+     * {@code dialogId} is 0 when the event has no chat.
+     */
     private Set<String> resolveZones(GlyphEvent event, long dialogId) {
-        return allZones();
+        GlyphRule rule = GlyphRules.resolve(event, dialogId);
+        if (!rule.enabled) {
+            return null;
+        }
+        return rule.zones.isEmpty() ? allZones() : rule.zones;
     }
 
     private static Set<String> allZones() {
