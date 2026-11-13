@@ -1,41 +1,18 @@
 package app.exteraless.glyph;
 
-import android.content.ComponentName;
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
 
-import com.nothing.ketchum.Common;
-import com.nothing.ketchum.Glyph;
-import com.nothing.ketchum.GlyphException;
-import com.nothing.ketchum.GlyphFrame;
-import com.nothing.ketchum.GlyphManager;
-import com.nothing.ketchum.GlyphMatrixFrame;
-import com.nothing.ketchum.GlyphMatrixManager;
-import com.nothing.ketchum.GlyphMatrixObject;
-import com.nothing.ketchum.GlyphMatrixUtils;
-
 import org.telegram.messenger.ApplicationLoader;
-import org.telegram.messenger.FileLog;
-import org.telegram.messenger.MessageObject;
-import org.telegram.messenger.MessagesController;
-import org.telegram.messenger.R;
 
-import java.util.List;
+import java.util.Set;
 
 /**
- * Управление Nothing Glyph: светодиодные зоны (Glyph Interface) и матрица Phone (3)
- * (Glyph Matrix) через единый AAR Nothing.
- *
- * SDK работает через системный прокси-сервис Nothing, поэтому весь жизненный цикл
- * сводится к init -> register -> openSession; на устройствах других вендоров
- * контроллер просто не инициализируется.
+ * Entry point for Nothing Glyph support. Decides when the glyphs light up and
+ * leaves the hardware to a {@link GlyphEngine}.
  */
 public final class GlyphController {
 
@@ -54,238 +31,259 @@ public final class GlyphController {
         return local;
     }
 
-    /** Сколько логотип держится на Glyph Matrix. */
-    private static final long LOGO_SHOW_MS = 3000L;
+    /** Binding right after a reboot can fail silently, so give the system a moment. */
+    private static final long START_DELAY_MS = 3000L;
 
-    /** Верхняя граница циклов «дыхания» на записи — страховка, если стоп-ивент потеряется. */
-    private static final int RECORDING_MAX_CYCLES = 600;
+    /**
+     * A batch of messages is reported one by one within a few milliseconds.
+     * Restarting the same flash for each of them would only make it stutter.
+     */
+    private static final long RETRIGGER_GUARD_MS = 300L;
 
-    /** Шаг и диапазон яркости «дыхания» матрицы (0-255, как в SDK). */
-    private static final long BREATH_STEP_MS = 120L;
-    private static final int BREATH_STEP = 10;
-    private static final int BREATH_MIN = 12;
-    private static final int BREATH_MAX = 255;
-
-    /** Страховка от потерянного стоп-ивента записи: ~10 минут дыхания матрицы. */
-    private static final int RECORDING_MAX_BREATH_STEPS = 5000;
-
-    /** Минимальный интервал между вспышками на сообщения — защита от стробоскопа в активном чате. */
-    private static final long FLASH_COOLDOWN_MS = 2500L;
+    /** How long a preview of a call or recording rule keeps breathing. */
+    private static final long PREVIEW_BREATHE_MS = 3000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final boolean supported;
 
     private boolean initialized;
-
-    private GlyphManager stripManager;
-    private volatile boolean stripSessionOpen;
-
-    private GlyphMatrixManager matrixManager;
-    private volatile boolean matrixRegistered;
-
-    private final Runnable hideLogoRunnable = this::hideMatrixLogo;
-
-    /** Кэш белого битмапа логотипа — пересобирать вектор на каждый шаг дыхания дорого. */
-    private Bitmap matrixLogoBitmap;
+    private GlyphEngine engine;
 
     private boolean recordingActive;
     private boolean callActive;
-    /** Глифы заняты длительной анимацией (запись или звонок) — вспышки сообщений пропускаем. */
-    private boolean glyphBusy;
+    private long callDialogId;
+    /** The call or recording the glyphs are breathing for, null when there is none. */
+    private GlyphEvent activeEvent;
     private long lastFlashAt;
-    private int breathBrightness = BREATH_MAX;
-    private int breathDirection = -1;
-    private int breathSteps;
+    private Set<String> lastFlashZones;
 
-    private final Runnable breathRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (!glyphBusy || matrixManager == null || !matrixRegistered) {
-                return;
-            }
-            if (breathSteps++ > RECORDING_MAX_BREATH_STEPS) {
-                stopMatrixBreathing();
-                return;
-            }
-            breathBrightness += breathDirection * BREATH_STEP;
-            if (breathBrightness <= BREATH_MIN) {
-                breathBrightness = BREATH_MIN;
-                breathDirection = 1;
-            } else if (breathBrightness >= BREATH_MAX) {
-                breathBrightness = BREATH_MAX;
-                breathDirection = -1;
-            }
-            showMatrixLogo(breathBrightness, false);
-            handler.postDelayed(this, BREATH_STEP_MS);
+    private final Runnable startRunnable = () -> {
+        GlyphEngine local = activeEngine();
+        if (local != null) {
+            local.start();
+        }
+    };
+
+    private final Runnable previewStopRunnable = () -> {
+        // A real call or recording that started meanwhile owns the glyphs now.
+        if (callActive || recordingActive) {
+            return;
+        }
+        GlyphEngine local = activeEngine();
+        if (local != null) {
+            local.stopEffect();
         }
     };
 
     private GlyphController() {
-        supported = "nothing".equalsIgnoreCase(Build.MANUFACTURER);
     }
 
     public boolean isSupported() {
-        return supported;
+        return GlyphDevice.current().kind != GlyphDevice.Kind.NONE;
     }
 
-    /** Идемпотентный биндинг к системному сервису глифов. */
+    /** Safe to call repeatedly. Does nothing while the feature is off. */
     public synchronized void init() {
-        if (initialized || !supported || !GlyphConfig.enabled()) {
+        if (initialized || !isSupported() || !GlyphConfig.enabled()) {
             return;
         }
         Context context = ApplicationLoader.applicationContext;
         if (context == null) {
             return;
         }
-        try {
-            if (isMatrixDevice()) {
-                initMatrix(context);
-            } else {
-                initStrip(context);
-            }
-            initialized = true;
-        } catch (Throwable t) {
-            FileLog.e(t);
+        if (engine == null) {
+            GlyphDevice device = GlyphDevice.current();
+            engine = device.kind == GlyphDevice.Kind.MATRIX
+                    ? new MatrixGlyphEngine(context, device)
+                    : new StripGlyphEngine(context, device);
         }
+        initialized = true;
+        handler.postDelayed(startRunnable, START_DELAY_MS);
     }
 
-    /** Отбиндить сервис — вызывается при выключении фичи в настройках. */
+    /** Called when the feature is switched off in settings. */
     public synchronized void shutdown() {
         initialized = false;
-        stripSessionOpen = false;
-        matrixRegistered = false;
-        previewPending = false;
-        recordingActive = false;
-        callActive = false;
-        glyphBusy = false;
-        lastFlashAt = 0;
-        handler.removeCallbacks(hideLogoRunnable);
-        handler.removeCallbacks(breathRunnable);
-        try {
-            if (stripManager != null) {
-                stripManager.unInit();
-            }
-        } catch (Throwable t) {
-            FileLog.e(t);
+        handler.removeCallbacks(startRunnable);
+        handler.removeCallbacks(previewStopRunnable);
+        if (engine != null) {
+            engine.stop();
         }
-        stripManager = null;
-        try {
-            if (matrixManager != null) {
-                matrixManager.unInit();
-            }
-        } catch (Throwable t) {
-            FileLog.e(t);
-        }
-        matrixManager = null;
+        handler.post(() -> {
+            recordingActive = false;
+            callActive = false;
+            callDialogId = 0;
+            activeEvent = null;
+            lastFlashAt = 0;
+            lastFlashZones = null;
+        });
     }
 
-    public void onNewMessages(List<MessageObject> messages, int account) {
-        if (!GlyphConfig.enabled() || !GlyphConfig.onNewMessage() || messages == null) {
-            return;
-        }
-        // Хук сидит до фильтрации уведомлений, поэтому мьют проверяем сами:
-        // вспышка без уведомления на экране вводит в заблуждение.
-        MessagesController messagesController = MessagesController.getInstance(account);
-        boolean hasIncoming = false;
-        for (int i = 0; i < messages.size(); i++) {
-            MessageObject message = messages.get(i);
-            if (message != null && !message.isOutOwner()
-                    && !messagesController.isDialogMuted(message.getDialogId())) {
-                hasIncoming = true;
-                break;
-            }
-        }
-        if (!hasIncoming) {
+    /**
+     * A message the client is about to notify about. Muted chats, the chat
+     * that is open right now and filtered messages never get here.
+     */
+    public void onMessageNotified(long dialogId, int account) {
+        // Called on the notifications queue for every message, so bail out
+        // early and decide on the controller thread.
+        if (!GlyphConfig.enabled()) {
             return;
         }
         handler.post(() -> {
-            if (!ensureReady() || glyphBusy) {
+            GlyphEngine local = readyEngine();
+            if (local == null) {
                 return;
             }
             if (GlyphConfig.screenOffOnly() && isScreenOn()) {
                 return;
             }
+            // A call or a recording outranks a message and keeps the glyphs.
+            if (callActive || recordingActive) {
+                return;
+            }
+            Set<String> zones = resolveZones(GlyphEvent.MESSAGE, dialogId);
+            if (zones == null) {
+                return;
+            }
             long now = SystemClock.uptimeMillis();
-            if (now - lastFlashAt < FLASH_COOLDOWN_MS) {
+            if (zones.equals(lastFlashZones) && now - lastFlashAt < RETRIGGER_GUARD_MS) {
                 return;
             }
             lastFlashAt = now;
-            if (matrixRegistered) {
-                showMatrixLogo();
-            } else {
-                pulseStrip();
-            }
+            lastFlashZones = zones;
+            // A preview that is still breathing must not cut this flash short.
+            handler.removeCallbacks(previewStopRunnable);
+            local.play(zones, GlyphEffects.PULSE);
         });
     }
 
     public void onRecordingStarted() {
-        if (!GlyphConfig.enabled() || !GlyphConfig.onRecording()) {
+        if (!GlyphConfig.enabled()) {
             return;
         }
         handler.post(() -> {
+            // A disabled rule means the event is not tracked at all, so it
+            // neither breathes nor holds back message flashes.
+            if (!GlyphRules.resolve(GlyphEvent.RECORDING, 0).enabled) {
+                return;
+            }
             recordingActive = true;
-            updateGlyphActivity();
+            updateActiveEvent();
         });
     }
 
     public void onRecordingStopped() {
-        // Стоп не проверяет конфиг: гасить подсветку нужно всегда, даже если
-        // тумблер выкрутили посреди записи.
+        // No config check: the glyphs must go dark even if the toggle was
+        // flipped in the middle of a recording.
         handler.post(() -> {
             recordingActive = false;
-            updateGlyphActivity();
+            updateActiveEvent();
         });
     }
 
-    /** Входящий VoIP-звонок зазвонил — дышим, пока не ответят или не сбросят. */
-    public void onIncomingCallStarted() {
-        if (!GlyphConfig.enabled() || !GlyphConfig.onCall()) {
+    public void onIncomingCallStarted(long dialogId, int account) {
+        if (!GlyphConfig.enabled()) {
             return;
         }
         handler.post(() -> {
+            if (!GlyphRules.resolve(GlyphEvent.CALL, dialogId).enabled) {
+                return;
+            }
             callActive = true;
-            updateGlyphActivity();
+            callDialogId = dialogId;
+            updateActiveEvent();
         });
     }
 
-    /** Звонок приняли, сбросили или сервис умер — идемпотентно. */
+    /** The call was answered or declined, or the service died. Safe to call repeatedly. */
     public void onIncomingCallStopped() {
         handler.post(() -> {
             callActive = false;
-            updateGlyphActivity();
+            callDialogId = 0;
+            updateActiveEvent();
         });
     }
 
     /**
-     * Единая точка входа для длительных анимаций: дыхание живёт, пока активна
-     * хотя бы одна причина (запись голосового или входящий звонок).
+     * Plays a rule from the settings the way {@code event} would show it. An
+     * empty set stands for every zone. The screen-off mode, the retrigger
+     * guard and the rule's own switch do not apply, but a real call or
+     * recording keeps the glyphs.
      */
-    private void updateGlyphActivity() {
-        boolean active = recordingActive || callActive;
-        if (active == glyphBusy) {
+    public void preview(Set<String> zones, GlyphEvent event) {
+        handler.post(() -> {
+            if (callActive || recordingActive) {
+                return;
+            }
+            GlyphEngine local = readyEngine();
+            if (local == null) {
+                return;
+            }
+            handler.removeCallbacks(previewStopRunnable);
+            Set<String> target = zones == null || zones.isEmpty() ? allZones() : zones;
+            if (event == GlyphEvent.MESSAGE) {
+                local.play(target, GlyphEffects.PULSE);
+            } else {
+                local.play(target, GlyphEffects.BREATHE);
+                handler.postDelayed(previewStopRunnable, PREVIEW_BREATHE_MS);
+            }
+        });
+    }
+
+    /**
+     * Breathing follows the most important ongoing event: a call outranks a
+     * recording. It restarts whenever that event changes, so the zones are
+     * always the ones of the event in charge.
+     */
+    private void updateActiveEvent() {
+        GlyphEvent event = callActive ? GlyphEvent.CALL
+                : recordingActive ? GlyphEvent.RECORDING : null;
+        if (event == activeEvent) {
             return;
         }
-        if (!active) {
-            glyphBusy = false;
-            stopMatrixBreathing();
-            if (stripManager != null && stripSessionOpen) {
-                try {
-                    stripManager.turnOff();
-                } catch (Throwable t) {
-                    FileLog.e(t);
-                }
+        activeEvent = event;
+        handler.removeCallbacks(previewStopRunnable);
+        if (event == null) {
+            GlyphEngine local = activeEngine();
+            if (local != null) {
+                local.stopEffect();
             }
             return;
         }
-        if (!ensureReady()) {
-            return;
+        GlyphEngine local = readyEngine();
+        if (local != null) {
+            long dialogId = event == GlyphEvent.CALL ? callDialogId : 0;
+            Set<String> zones = resolveZones(event, dialogId);
+            local.play(zones != null ? zones : allZones(), GlyphEffects.BREATHE);
         }
-        glyphBusy = true;
-        if (matrixRegistered) {
-            startMatrixBreathing();
-        } else if (stripSessionOpen) {
-            breatheStrip();
+    }
+
+    /** The engine, initializing it first if the feature is on. Null when glyphs are unavailable. */
+    private GlyphEngine readyEngine() {
+        if (!GlyphConfig.enabled()) {
+            return null;
         }
+        init();
+        return activeEngine();
+    }
+
+    private synchronized GlyphEngine activeEngine() {
+        return initialized ? engine : null;
+    }
+
+    /**
+     * Zones to light for an event, or null when its rule is turned off.
+     * {@code dialogId} is 0 when the event has no chat.
+     */
+    private Set<String> resolveZones(GlyphEvent event, long dialogId) {
+        GlyphRule rule = GlyphRules.resolve(event, dialogId);
+        if (!rule.enabled) {
+            return null;
+        }
+        return rule.zones.isEmpty() ? allZones() : rule.zones;
+    }
+
+    private static Set<String> allZones() {
+        return GlyphDevice.current().zoneIds();
     }
 
     private boolean isScreenOn() {
@@ -295,227 +293,5 @@ public final class GlyphController {
         }
         PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         return powerManager == null || powerManager.isInteractive();
-    }
-
-    /** Превью, отложенное до подключения сервиса глифов (бинд асинхронный). */
-    private boolean previewPending;
-
-    /** Кнопка «Предпросмотр» в настройках: логотип на матрице и/или вспышка зон. */
-    public void preview() {
-        handler.post(() -> {
-            if (!ensureReady()) {
-                // Сервис ещё биндится — покажем превью из колбэка подключения.
-                previewPending = supported && GlyphConfig.enabled();
-                return;
-            }
-            if (matrixRegistered) {
-                showMatrixLogo();
-            }
-            pulseStrip();
-        });
-    }
-
-    private void runPendingPreview() {
-        if (!previewPending) {
-            return;
-        }
-        previewPending = false;
-        handler.post(this::preview);
-    }
-
-    private boolean ensureReady() {
-        if (!supported || !GlyphConfig.enabled()) {
-            return false;
-        }
-        if (!initialized) {
-            init();
-        }
-        return initialized && (stripSessionOpen || matrixRegistered);
-    }
-
-    private boolean isMatrixDevice() {
-        try {
-            return Common.is23112() || Common.is25111p();
-        } catch (Throwable t) {
-            return false;
-        }
-    }
-
-    private void initStrip(Context context) {
-        stripManager = GlyphManager.getInstance(context);
-        stripManager.init(new GlyphManager.Callback() {
-            @Override
-            public void onServiceConnected(ComponentName componentName) {
-                boolean registered = false;
-                if (Common.is20111()) {
-                    registered = stripManager.register(Glyph.DEVICE_20111);
-                } else if (Common.is22111()) {
-                    registered = stripManager.register(Glyph.DEVICE_22111);
-                } else if (Common.is23111()) {
-                    registered = stripManager.register(Glyph.DEVICE_23111);
-                } else if (Common.is23113()) {
-                    registered = stripManager.register(Glyph.DEVICE_23113);
-                } else if (Common.is24111()) {
-                    registered = stripManager.register(Glyph.DEVICE_24111);
-                } else if (Common.is25111()) {
-                    registered = stripManager.register(Glyph.DEVICE_25111);
-                }
-                if (!registered) {
-                    return;
-                }
-                try {
-                    stripManager.openSession();
-                    stripSessionOpen = true;
-                    runPendingPreview();
-                } catch (GlyphException e) {
-                    FileLog.e(e);
-                }
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName componentName) {
-                stripSessionOpen = false;
-            }
-        });
-    }
-
-    private void initMatrix(Context context) {
-        matrixManager = GlyphMatrixManager.getInstance(context);
-        matrixManager.init(new GlyphMatrixManager.Callback() {
-            @Override
-            public void onServiceConnected(ComponentName componentName) {
-                matrixRegistered = matrixManager.register(
-                        Common.is23112() ? Glyph.DEVICE_23112 : Glyph.DEVICE_25111p);
-                if (matrixRegistered) {
-                    runPendingPreview();
-                }
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName componentName) {
-                matrixRegistered = false;
-            }
-        });
-    }
-
-    /** Короткая вспышка всех зон — реакция на входящее сообщение. */
-    private void pulseStrip() {
-        if (stripManager == null || !stripSessionOpen) {
-            return;
-        }
-        try {
-            GlyphFrame frame = stripManager.getGlyphFrameBuilder()
-                    .buildChannelA()
-                    .buildChannelB()
-                    .buildChannelC()
-                    .buildChannelD()
-                    .buildChannelE()
-                    .buildPeriod(600)
-                    .buildCycles(2)
-                    .buildInterval(120)
-                    .build();
-            stripManager.animate(frame);
-        } catch (Throwable t) {
-            FileLog.e(t);
-        }
-    }
-
-    /** Медленное «дыхание» на время записи голосового; гасится через turnOff(). */
-    private void breatheStrip() {
-        try {
-            GlyphFrame frame = stripManager.getGlyphFrameBuilder()
-                    .buildChannelA()
-                    .buildChannelB()
-                    .buildChannelC()
-                    .buildChannelD()
-                    .buildChannelE()
-                    .buildPeriod(1500)
-                    .buildCycles(RECORDING_MAX_CYCLES)
-                    .buildInterval(0)
-                    .build();
-            stripManager.animate(frame);
-        } catch (Throwable t) {
-            FileLog.e(t);
-        }
-    }
-
-    private void showMatrixLogo() {
-        showMatrixLogo(BREATH_MAX, true);
-    }
-
-    private void showMatrixLogo(int brightness, boolean autoHide) {
-        if (matrixManager == null || !matrixRegistered) {
-            return;
-        }
-        Context context = ApplicationLoader.applicationContext;
-        if (context == null) {
-            return;
-        }
-        Bitmap bitmap = getMatrixLogoBitmap(context);
-        if (bitmap == null) {
-            return;
-        }
-        try {
-            GlyphMatrixObject object = new GlyphMatrixObject.Builder()
-                    .setImageSource(bitmap)
-                    // Знак занимает центральные 2/3 канваса иконки; scale 150 кропает
-                    // ровно до него, иначе на матрице 25x25 лого выглядит крошечным.
-                    .setScale(150)
-                    .setBrightness(brightness)
-                    .build();
-            GlyphMatrixFrame frame = new GlyphMatrixFrame.Builder()
-                    .addTop(object)
-                    .build(context);
-            // setAppMatrixFrame, а не setMatrixFrame: у приложения приоритет ниже
-            // Glyph Toy, и системный глиф-сервис не должен с ним конфликтовать.
-            matrixManager.setAppMatrixFrame(frame.render());
-            handler.removeCallbacks(hideLogoRunnable);
-            if (autoHide) {
-                handler.postDelayed(hideLogoRunnable, LOGO_SHOW_MS);
-            }
-        } catch (Throwable t) {
-            FileLog.e(t);
-        }
-    }
-
-    private Bitmap getMatrixLogoBitmap(Context context) {
-        if (matrixLogoBitmap != null) {
-            return matrixLogoBitmap;
-        }
-        Drawable icon = context.getDrawable(R.drawable.exteraless_icon_monochrome);
-        if (icon == null) {
-            return null;
-        }
-        // SDK мапит яркость пикселя (R+G+B)/3 на яркость LED, поэтому чёрный
-        // монохромный знак дал бы кадр из одних нулей — тонируем в белый.
-        icon = icon.mutate();
-        icon.setTint(Color.WHITE);
-        matrixLogoBitmap = GlyphMatrixUtils.drawableToBitmap(icon);
-        return matrixLogoBitmap;
-    }
-
-    private void startMatrixBreathing() {
-        breathSteps = 0;
-        breathBrightness = BREATH_MAX;
-        breathDirection = -1;
-        // Таймер автогашения от превью/уведомления не должен рвать дыхание.
-        handler.removeCallbacks(hideLogoRunnable);
-        handler.post(breathRunnable);
-    }
-
-    private void stopMatrixBreathing() {
-        handler.removeCallbacks(breathRunnable);
-        hideMatrixLogo();
-    }
-
-    private void hideMatrixLogo() {
-        if (matrixManager == null || !matrixRegistered) {
-            return;
-        }
-        try {
-            matrixManager.closeAppMatrix();
-        } catch (Throwable t) {
-            FileLog.e(t);
-        }
     }
 }

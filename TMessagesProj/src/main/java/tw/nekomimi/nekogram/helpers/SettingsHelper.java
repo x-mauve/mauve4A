@@ -74,7 +74,6 @@ public class SettingsHelper {
         SEARCH_TITLE_ALIASES.put("OEChats:transcribeProvider", "PremiumPreviewVoiceToText");
         SEARCH_TITLE_ALIASES.put("OEGeneral:translator", "TranslatorSettings");
         SEARCH_TITLE_ALIASES.put("OEGeneral:translateInSheet", "OEChatsTranslateInSheet");
-        SEARCH_TITLE_ALIASES.put("OEGeneral:glyph", "OEGlyphTitle");
         SEARCH_TITLE_ALIASES.put("OpenExtera:channel", "ProfileChannel");
         SEARCH_TITLE_ALIASES.put("OEGeneral:downloadSpeed", "OEGeneralSpeedHeader");
         SEARCH_TITLE_ALIASES.put("OEAppearance:md3Styles", "OEAppearanceMaterialDesign3");
@@ -95,7 +94,6 @@ public class SettingsHelper {
         SEARCH_TITLE_ALIASES.put("OEChats:voskModels", "VoskModelsShort");
         MOVED_ROWS.put("chats:translateInSheet", "general");
         MOVED_ROWS.put("other:unlimitedPinnedDialogs", "general");
-        MOVED_ROWS.put("other:glyph", "general");
         moveRows("chats", "menus", "bottomButton", "adminShortcuts", "chatMenu", "messageMenu",
                 "groupedMessageMenu", "textStyle", "TextStyle", "mediaViewerMenu", "actionBarButtons",
                 "defaultDeleteMenu", "DefaultDeleteMenu");
@@ -456,6 +454,9 @@ public class SettingsHelper {
         exteralessFragments.add(new OpenExteraAyuMomentsActivity());
         exteralessFragments.add(new PillStackSettingsActivity());
         exteralessFragments.add(new AiSettingsActivity());
+        if (app.exteraless.glyph.GlyphController.getInstance().isSupported()) {
+            exteralessFragments.add(new OpenExteraGlyphActivity());
+        }
 
         String e_title = getString(R.string.OpenExtera);
         for (BaseNekoSettingsActivity fragment : exteralessFragments) {

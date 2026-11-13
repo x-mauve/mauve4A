@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Glyph:** support for Nothing Phone (4b).
+- **Glyph:** rules that pick which glyphs light up for new messages, incoming
+  calls and voice recording, each with its own switch.
+- **Glyph:** rules for single chats, which replace the event rules for
+  messages and calls from that chat.
+- **Glyph:** a preview in the rule editor that plays exactly the glyphs you
+  picked.
+
+### Changed
+
+- **Glyph:** every message now flashes the glyphs right away. The 2.5 second
+  pause between flashes is gone.
+- **Glyph:** an incoming call takes the glyphs over from a voice recording
+  and gives them back when it ends.
+- **Glyph:** the settings moved from General to Experimental Features. The
+  old per-event toggles are replaced by rules and reset to their defaults.
+- **Glyph:** while Glyph Interface is off, the rest of its settings are
+  dimmed.
+
+### Fixed
+
+- **Glyph:** the glyphs no longer flash for messages that show no notification,
+  such as messages in the chat that is open or with notifications turned off.
+- **Glyph:** the mauve logo on the Glyph Matrix of Phone (3) and Phone (4a) Pro
+  is now larger and sharper, with two separate chevrons, the left one dimmer.
+
 ## [0.2.2] - 2026-11-13
 
 ### Fixed
