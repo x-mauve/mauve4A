@@ -4085,7 +4085,8 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     // premium star inside it is narrower and pinned left, so measure what is actually drawn.
     private int getNameBadgeLeft() {
         if (!drawPremium) {
-            return nameMuteLeft;
+            // nameMuteLeft is 6dp past the name; use the 4dp gap that the chat header and profile have
+            return LocaleController.isRTL ? nameMuteLeft : nameMuteLeft - dp(2);
         }
         if (LocaleController.isRTL) {
             return nameMuteLeft - dp(24);
@@ -4823,14 +4824,15 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                     y -= dp(9);
                 }
                 if (emojiStatus != null) {
+                    // Upstream puts the status box at y - 4dp, which leaves it above the middle of the name
                     emojiStatusView.setTranslationX(gtx + nameMuteLeft - dp(2));
-                    emojiStatusView.setTranslationY(gty + y - dp(4));
+                    emojiStatusView.setTranslationY(gty + y - dp(2));
                     if (rightFragmentOpenedProgress > 0) {
                         emojiStatus.setBounds(
                             nameMuteLeft - dp(2),
-                            y - dp(4),
+                            y - dp(2),
                             nameMuteLeft + dp(20),
-                            y - dp(4) + dp(22)
+                            y - dp(2) + dp(22)
                         );
                         emojiStatus.draw(canvas);
                     } else {
@@ -4857,10 +4859,6 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                     y -= dp(9);
                 }
                 float x = getNameBadgeLeft();
-                // The status box is 22dp tall at y - 4dp; keep the 20dp badge on the same center line
-                if (drawPremium) {
-                    y -= dp(2);
-                }
                 if (rightFragmentOpenedProgress > 0) {
                     nameBadgeDrawable.setColor(Theme.getColor(Theme.key_chats_verifiedBackground, resourcesProvider));
                     nameBadgeDrawable.setBounds((int) x, y - dp(1), (int) x + dp(20), y + dp(19));
