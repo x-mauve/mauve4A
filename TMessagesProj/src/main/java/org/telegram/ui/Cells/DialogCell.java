@@ -4085,7 +4085,8 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     // premium star inside it is narrower and pinned left, so measure what is actually drawn.
     private int getNameBadgeLeft() {
         if (!drawPremium) {
-            return nameMuteLeft;
+            // nameMuteLeft is 6dp past the name; use the 4dp gap that the chat header and profile have
+            return LocaleController.isRTL ? nameMuteLeft : nameMuteLeft - dp(2);
         }
         if (LocaleController.isRTL) {
             return nameMuteLeft - dp(24);
