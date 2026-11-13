@@ -8,5 +8,15 @@
     <string name="OEGlyphScreenOff">Сообщения только при выключенном экране</string>
     <string name="OEGlyphPreview">Предпросмотр</string>
     <string name="OEGlyphUnsupported">Glyph Interface доступен только на Nothing Phone</string>
+    <string name="OEGlyphEventMessage">Новые сообщения</string>
+    <string name="OEGlyphEventCall">Входящие звонки</string>
+    <string name="OEGlyphEventRecording">Запись голосовых</string>
+    <string name="OEGlyphRuleEnabled">Включено</string>
+    <string name="OEGlyphRuleGlyphs">Глифы</string>
+    <string name="OEGlyphZone">Глиф %s</string>
+    <string name="OEGlyphRuleLastZone">Должен остаться выбранным хотя бы один глиф. Чтобы глифы не загорались, выключите правило.</string>
+    <string name="OEGlyphRuleDelete">Удалить правило</string>
+    <string name="OEGlyphRuleInfoEvent">Чаты с собственным правилом это правило не используют.</string>
+    <string name="OEGlyphRuleInfoChat">Это правило заменяет правила событий для сообщений и звонков из этого чата на всех аккаунтах.</string>
     <string name="OEGlyphInfo">Подсветка задней панели Nothing Phone: вспышка на входящие сообщения, логотип mauve на Glyph Matrix Phone (3) и «дыхание» во время записи голосовых или входящего звонка. Заглушённые чаты вспышку не вызывают.</string>
 </resources>

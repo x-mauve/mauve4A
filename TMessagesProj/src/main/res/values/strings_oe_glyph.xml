@@ -9,5 +9,15 @@
     <string name="OEGlyphScreenOff">Messages only when screen is off</string>
     <string name="OEGlyphPreview">Preview</string>
     <string name="OEGlyphUnsupported">Glyph Interface is only available on Nothing phones</string>
+    <string name="OEGlyphEventMessage">New messages</string>
+    <string name="OEGlyphEventCall">Incoming calls</string>
+    <string name="OEGlyphEventRecording">Voice recording</string>
+    <string name="OEGlyphRuleEnabled">Enabled</string>
+    <string name="OEGlyphRuleGlyphs">Glyphs</string>
+    <string name="OEGlyphZone">Glyph %s</string>
+    <string name="OEGlyphRuleLastZone">At least one glyph has to stay selected. Turn the rule off to keep the glyphs dark.</string>
+    <string name="OEGlyphRuleDelete">Delete rule</string>
+    <string name="OEGlyphRuleInfoEvent">Chats with a rule of their own ignore this one.</string>
+    <string name="OEGlyphRuleInfoChat">This rule replaces the event rules for messages and calls from this chat, on all accounts.</string>
     <string name="OEGlyphInfo">Lights up the Glyph Interface on the back of your Nothing phone: a flash for incoming messages, the mauve logo on the Phone (3) Glyph Matrix and a breathing glow while recording voice messages or receiving a call. Muted chats never trigger the flash.</string>
 </resources>
