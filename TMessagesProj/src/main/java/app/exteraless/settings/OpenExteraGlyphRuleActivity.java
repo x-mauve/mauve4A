@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import app.exteraless.glyph.GlyphConfig;
+import app.exteraless.glyph.GlyphController;
 import app.exteraless.glyph.GlyphDevice;
 import app.exteraless.glyph.GlyphEvent;
 import app.exteraless.glyph.GlyphRule;
@@ -55,6 +56,7 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
     private int zonesStartRow;
     private int zonesEndRow;
     private int actionsDividerRow;
+    private int previewRow;
     private int deleteRow;
     private int infoRow;
 
@@ -150,12 +152,9 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         } else {
             zonesDividerRow = zonesHeaderRow = zonesStartRow = zonesEndRow = -1;
         }
-        if (event == null) {
-            actionsDividerRow = addRow();
-            deleteRow = addRow();
-        } else {
-            actionsDividerRow = deleteRow = -1;
-        }
+        actionsDividerRow = addRow();
+        previewRow = addRow();
+        deleteRow = event == null ? addRow() : -1;
         infoRow = addRow();
     }
 
@@ -205,6 +204,10 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                 ((TextCheckbox2Cell) view).setChecked(checkedZones.contains(id));
             }
             save();
+        } else if (position == previewRow) {
+            // A chat rule is previewed as a message, its most common use.
+            GlyphController.getInstance().preview(storedZones(),
+                    event != null ? event : GlyphEvent.MESSAGE);
         } else if (position == deleteRow) {
             GlyphRules.removeChatRule(dialogId);
             finishFragment();
@@ -246,6 +249,14 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         }
 
         @Override
+        public boolean isEnabled(RecyclerView.ViewHolder holder) {
+            if (holder.getAdapterPosition() == previewRow && !GlyphConfig.enabled()) {
+                return false;
+            }
+            return super.isEnabled(holder);
+        }
+
+        @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position, boolean partial) {
             switch (holder.getItemViewType()) {
                 case TYPE_HEADER: {
@@ -267,10 +278,17 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_TEXT: {
                     TextCell cell = (TextCell) holder.itemView;
-                    if (position == deleteRow) {
+                    if (position == previewRow) {
+                        cell.setColors(Theme.key_windowBackgroundWhiteGrayIcon,
+                                Theme.key_windowBackgroundWhiteBlackText);
+                        cell.setTextAndIcon(getString(R.string.OEGlyphPreview),
+                                R.drawable.deproko_baseline_lamp_filled_24, deleteRow != -1);
+                        cell.setEnabled(GlyphConfig.enabled(), false);
+                    } else if (position == deleteRow) {
                         cell.setColors(Theme.key_text_RedRegular, Theme.key_text_RedRegular);
                         cell.setTextAndIcon(getString(R.string.OEGlyphRuleDelete),
                                 R.drawable.msg_delete, false);
+                        cell.setEnabled(true, false);
                     }
                     break;
                 }
@@ -293,7 +311,7 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                 return TYPE_HEADER;
             } else if (position >= zonesStartRow && position < zonesEndRow) {
                 return TYPE_CHECKBOX;
-            } else if (position == deleteRow) {
+            } else if (position == previewRow || position == deleteRow) {
                 return TYPE_TEXT;
             } else if (position == infoRow) {
                 return TYPE_INFO_PRIVACY;

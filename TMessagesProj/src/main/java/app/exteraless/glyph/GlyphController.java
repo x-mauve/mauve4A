@@ -40,6 +40,9 @@ public final class GlyphController {
      */
     private static final long RETRIGGER_GUARD_MS = 300L;
 
+    /** How long a preview of a call or recording rule keeps breathing. */
+    private static final long PREVIEW_BREATHE_MS = 3000L;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private boolean initialized;
@@ -57,6 +60,17 @@ public final class GlyphController {
         GlyphEngine local = activeEngine();
         if (local != null) {
             local.start();
+        }
+    };
+
+    private final Runnable previewStopRunnable = () -> {
+        // A real call or recording that started meanwhile owns the glyphs now.
+        if (callActive || recordingActive) {
+            return;
+        }
+        GlyphEngine local = activeEngine();
+        if (local != null) {
+            local.stopEffect();
         }
     };
 
@@ -90,6 +104,7 @@ public final class GlyphController {
     public synchronized void shutdown() {
         initialized = false;
         handler.removeCallbacks(startRunnable);
+        handler.removeCallbacks(previewStopRunnable);
         if (engine != null) {
             engine.stop();
         }
@@ -135,6 +150,8 @@ public final class GlyphController {
             }
             lastFlashAt = now;
             lastFlashZones = zones;
+            // A preview that is still breathing must not cut this flash short.
+            handler.removeCallbacks(previewStopRunnable);
             local.play(zones, GlyphEffects.PULSE);
         });
     }
@@ -186,12 +203,28 @@ public final class GlyphController {
         });
     }
 
-    /** Preview button in settings. */
-    public void preview() {
+    /**
+     * Plays a rule from the settings the way {@code event} would show it. An
+     * empty set stands for every zone. The screen-off mode, the retrigger
+     * guard and the rule's own switch do not apply, but a real call or
+     * recording keeps the glyphs.
+     */
+    public void preview(Set<String> zones, GlyphEvent event) {
         handler.post(() -> {
+            if (callActive || recordingActive) {
+                return;
+            }
             GlyphEngine local = readyEngine();
-            if (local != null) {
-                local.play(allZones(), GlyphEffects.PULSE);
+            if (local == null) {
+                return;
+            }
+            handler.removeCallbacks(previewStopRunnable);
+            Set<String> target = zones == null || zones.isEmpty() ? allZones() : zones;
+            if (event == GlyphEvent.MESSAGE) {
+                local.play(target, GlyphEffects.PULSE);
+            } else {
+                local.play(target, GlyphEffects.BREATHE);
+                handler.postDelayed(previewStopRunnable, PREVIEW_BREATHE_MS);
             }
         });
     }
@@ -208,6 +241,7 @@ public final class GlyphController {
             return;
         }
         activeEvent = event;
+        handler.removeCallbacks(previewStopRunnable);
         if (event == null) {
             GlyphEngine local = activeEngine();
             if (local != null) {
