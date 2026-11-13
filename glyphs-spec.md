@@ -3,9 +3,9 @@
 Конспект по поддержке Nothing Glyph в mauve. Источник требований:
 Notion, «v0.3.0: Not Enough Glyphs!».
 
-Сейчас здесь описано только текущее состояние (унаследовано от exteraless,
-коммиты `9d15b912d`, `74cb562f3`). Номера строк актуальны на ветке `v0.3.0`
-(`75dac3e8f`) и поплывут, поэтому ищи по именам.
+Здесь описана система на правилах, которая заменила унаследованную от exteraless
+реализацию (коммиты `3896e5444`..`f99bd0071`). Номера строк не приводятся, ищи
+по именам.
 
 Все про сам SDK (методы, раскладки зон по моделям, ограничения) лежит в
 `glyphs-api-spec.md`. Здесь только то, как mauve им пользуется.
@@ -14,189 +14,295 @@ Notion, «v0.3.0: Not Enough Glyphs!».
 
 ### 1.1 Карта файлов
 
+Код глифов лежит в `TMessagesProj/src/main/java/app/exteraless/glyph/`, кроме
+конфига на Kotlin.
+
 | Что | Где |
 |---|---|
-| Контроллер (вся логика, синглтон) | `TMessagesProj/src/main/java/app/exteraless/glyph/GlyphController.java` |
-| Настройки (5 bool) | `TMessagesProj/src/main/kotlin/app/exteraless/glyph/GlyphConfig.kt` |
-| Экран настроек | `TMessagesProj/src/main/java/app/exteraless/settings/OpenExteraGlyphActivity.java` |
+| Контроллер: решает, когда и какими зонами светить (синглтон) | `GlyphController.java` |
+| Профиль телефона и раскладки зон | `GlyphDevice.java`, `GlyphZone.java` |
+| Тип события | `GlyphEvent.java` (`MESSAGE`, `CALL`, `RECORDING`) |
+| Эффекты | `GlyphEffect.java` (интерфейс), `GlyphEffects.java` (`PULSE`, `BREATHE`) |
+| Движки | `GlyphEngine.java` (интерфейс), `StripGlyphEngine.java` (LED-зоны), `MatrixGlyphEngine.java` (Glyph Matrix) |
+| Правила | `GlyphRule.java` (одно правило), `GlyphRules.java` (набор, разбор и запись JSON) |
+| Настройки | `TMessagesProj/src/main/kotlin/app/exteraless/glyph/GlyphConfig.kt` |
+| Экраны настроек | `app/exteraless/settings/OpenExteraGlyphActivity.java`, `OpenExteraGlyphRuleActivity.java` |
 | Строки (`OEGlyph*`) | `res/values/strings_oe_glyph.xml`, плюс `values-ru-rRU`, `values-ar` |
 | SDK | `TMessagesProj/libs/glyph-matrix-sdk-2.0.aar` (в `.gitignore` добавлен как исключение) |
 | Подключение SDK, ключ | `TMessagesProj/build.gradle` (`glyphKey`, `implementation files(...)`), `gradle.properties` (`GLYPH_API_KEY=test`) |
 | Манифест | permission `com.nothing.ketchum.permission.ENABLE`, meta-data `NothingKey=${GLYPH_API_KEY}`, `tools:overrideLibrary="com.nothing.thirdparty"` (у AAR minSdk 33) |
 
-Тестов на глифы нет. Правил R8/proguard для `com.nothing.*` нет. В `CHANGELOG.md`
-глифы не упоминаются.
+Тестов на глифы нет. Правил R8/proguard для `com.nothing.*` нет.
 
 ### 1.2 Устройства и SDK
 
-- Поддержка определяется как `Build.MANUFACTURER == "nothing"` (`isSupported()`).
-  На остальных контроллер не инициализируется вообще.
-- Два взаимоисключающих режима, выбор в `init()` через `isMatrixDevice()`:
-  - **matrix**: `Common.is23112() || Common.is25111p()`, работает через
-    `GlyphMatrixManager`;
-  - **strip** (LED-зоны): все остальные, через `GlyphManager`. Регистрируются
-    `20111`, `22111`, `23111`, `23113`, `24111`, `25111`. Если модель не из списка,
-    `register` не вызывается и сессия не открывается (тихо, без лога).
-- Коды моделей (подтверждено README и байткодом SDK): 20111 Phone (1),
-  22111 Phone (2), 23111 Phone (2a), 23113 Phone (2a) Plus, 24111 Phone (3a) и
-  (3a) Pro, 23112 Phone (3), 25111 Phone (4a), 25111p Phone (4a) Pro.
-- Не поддержаны: Phone (4b) (код 25131, в нашей сборке AAR его нет, нужна более
-  новая из `Glyph-Developer-Kit/sdk/`) и Phone (3a) Lite (в SDK отсутствует
-  совсем).
-- Жизненный цикл strip: `init(callback)` → `onServiceConnected` → `register(device)`
-  → `openSession()` → `stripSessionOpen = true`. Matrix: `init` → `register` →
-  `matrixRegistered = true`. Бинд асинхронный, флаги `volatile`.
-- Ключ `test` отладочный: работает только с включенным через adb debug-режимом,
-  который сам выключается через 48 часов. На Android 16 (Nothing OS 4.0) ключ
-  не проверяется вообще, кроме Phone (1). Боевой ключ подставляется через
-  `GLYPH_API_KEY` (`local.properties` или env). Подробности в
-  `glyphs-api-spec.md`, 1.3.
+- AAR взят из `Glyph-Developer-Kit/sdk/` (114 689 байт, sha256
+  `329393019db5f0f987c6245855d13fa273d06756c68829ca0f6ae686ba336da1`), это сборка
+  с Phone (4b).
+- `GlyphDevice.current()` определяет модель один раз и кэширует результат. Если
+  `Build.MANUFACTURER` не `nothing`, профиль `NONE`. Дальше вызовы `Common.is…()`
+  по порядку: `is23112`, `is25111p` (матрицы первыми), `is20111`, `is22111`,
+  `is23111`, `is23113`, `is24111`, `is25111`, `is25131`. Ничего не подошло или
+  SDK бросил исключение: `NONE`.
+- `GlyphController.isSupported()` это `kind != NONE`. На неподдержанных
+  устройствах (включая Nothing без модели в SDK, например Phone (3a) Lite)
+  контроллер не инициализируется, а строки настроек нет.
+- Виды профиля: `STRIP` (LED-зоны, `StripGlyphEngine`), `MATRIX` (Phone (3) и
+  (4a) Pro, `MatrixGlyphEngine`), `NONE`.
 
-Что SDK умеет, но код не использует (важно для будущих анимаций и выбора зон):
+Зоны `STRIP`. Идентификатор зоны (`id`) хранится в настройках и он же
+показывается пользователю (`label`, через шаблон `Glyph %s`). Индексы каналов
+берутся из констант `Glyph.Code_*`.
 
-- `GlyphFrame.Builder`: `buildChannel(int)` и `buildChannel(int, int)` для
-  отдельных каналов и их яркости, плюс `buildPeriod/Cycles/Interval`. Индексы
-  лежат в `Glyph.Code_*`, раскладки по моделям в `glyphs-api-spec.md`, раздел 4.
-  Для 23113 используется `Code_23111`.
-- `GlyphManager.setFrameColors(int[])`: сырой кадр яркостей. Единственный способ
-  сделать анимацию, отличную от встроенного «дыхания» `animate()`.
-- `GlyphManager`: `toggle(frame)`, `displayProgress(...)`,
-  `displayProgressAndToggle(...)`, `closeSession()`.
-- `GlyphMatrixManager`: `setMatrixFrame` / `setAppMatrixFrame` (от объекта или от
-  сырого `int[]`), `closeAppMatrix()`, `setGlyphMatrixTimeout(boolean)`, `turnOff()`.
-- `GlyphMatrixObject.Builder`: картинка, текст, позиция, поворот, масштаб, яркость,
-  инверсия. `GlyphMatrixFrame.Builder`: три слоя (`addTop/Mid/Low`), `buildWithMarquee`.
-- `GlyphMatrixUtils`: конвертация bitmap в матрицу, текст, `generateMatrixProgress`.
-- `Common.getDeviceMatrixLength()`.
+| Модель | `sdkDevice` | Каналов | Зоны |
+|---|---|---|---|
+| Phone (1) | `DEVICE_20111` | 15 | `A`, `B`, `C` (4 канала), `D` (8), `E` |
+| Phone (2) | `DEVICE_22111` | 33 | `A1`, `A2`, `B`, `C1` (16), `C2`…`C6`, `D` (8), `E` |
+| Phone (2a) | `DEVICE_23111` | 26 | `A`, `B`, `C` (24), коды `Code_23111` |
+| Phone (2a) Plus | `DEVICE_23113` | 26 | как у (2a), те же `Code_23111` |
+| Phone (3a), (3a) Pro | `DEVICE_24111` | 36 | `A` (11), `B` (5), `C` (20) |
+| Phone (4a) | `DEVICE_25111` | 6 | `1`…`6`, по одному каналу |
+| Phone (4b) | `DEVICE_25131` | 4 | `1`…`4`, по одному каналу |
 
-### 1.3 Настройки
+Про ключ: `test` отладочный, работает только с включенным через adb
+debug-режимом, который сам выключается через 48 часов. На Android 16
+(Nothing OS 4.0) ключ не проверяется вообще, кроме Phone (1). Боевой ключ
+подставляется через `GLYPH_API_KEY` (`local.properties` или env). Подробности в
+`glyphs-api-spec.md`, 1.3.
+
+### 1.3 Настройки и правила
 
 `GlyphConfig` хранит все в общих `NekoConfig.getPreferences()` через `ConfigItem`
-(та же схема, что у `OpenExteraConfig`). Загрузка умеет только bool.
+(та же схема, что у `OpenExteraConfig`). Загрузка умеет bool и string.
 
-| Ключ | Геттер | По умолчанию | Смысл |
+| Ключ | Тип | По умолчанию | Смысл |
 |---|---|---|---|
-| `OEGlyphEnabled` | `enabled()` | false | мастер-переключатель, без него нет бинда к сервису |
-| `OEGlyphNewMessage` | `onNewMessage()` | true | вспышка на входящее сообщение |
-| `OEGlyphCalls` | `onCall()` | true | свечение на входящий звонок |
-| `OEGlyphRecording` | `onRecording()` | true | свечение при записи голосового |
-| `OEGlyphScreenOff` | `screenOffOnly()` | false | сообщения только при выключенном экране |
+| `OEGlyphEnabled` | bool | false | главный выключатель, без него нет бинда к сервису |
+| `OEGlyphScreenOff` | bool | false | сообщения только при выключенном экране |
+| `OEGlyphRules` | string | `""` | правила в JSON |
 
-Ключи попадают в бэкап настроек через `GlyphConfig.getConfigTypes()`
-(`SettingsBackupHelper`). Новым настройкам не-bool типа нужна поддержка в
-`loadConfig` и в бэкапе.
+Старые ключи `OEGlyphNewMessage`, `OEGlyphCalls`, `OEGlyphRecording` при
+загрузке конфига удаляются из `SharedPreferences`, их значения не читаются.
+Миграции нет: правила начинаются со значений по умолчанию.
+
+**Правило** (`GlyphRule`, неизменяемое): `enabled` и `zones`. Выключенное
+правило означает «не зажигать». Пустой набор зон означает «все зоны
+устройства».
+
+**Набор** (`GlyphRules`): по одному правилу на каждый `GlyphEvent` (по умолчанию
+включено, все зоны) и правила чатов по `dialogId`. Правило чата действует на
+`MESSAGE` и `CALL` из этого чата, общее для всех аккаунтов и заменяет правило
+события целиком, поля не смешиваются. `resolve(event, dialogId)` возвращает
+правило чата, если оно есть и событие ему подходит, иначе правило события.
+
+Набор лежит в памяти неизменяемым снимком в `volatile` поле: контроллер читает
+его со своего потока, настройки подменяют ссылку и сразу пишут JSON через
+`ConfigItem.setConfigString`.
+
+Формат `OEGlyphRules`:
+
+```json
+{
+  "v": 1,
+  "events": {
+    "message":   {"on": true, "zones": ["A", "C"]},
+    "call":      {"on": true, "zones": []},
+    "recording": {"on": false, "zones": []}
+  },
+  "chats": {
+    "-1001234567890": {"on": true, "zones": ["B"]}
+  }
+}
+```
+
+Пустая строка, битый JSON или версия не `1` дают набор по умолчанию.
+Отсутствующее событие означает правило по умолчанию. Незнакомые поля внутри
+правила при разборе игнорируются, так что поле для анимации добавится без
+миграции.
+
+Бэкап: ключи попадают в него через `GlyphConfig.getConfigTypes()`
+(`SettingsBackupHelper`), строковый тип экспортируется и импортируется. После
+импорта приложение перезапускается, правила перечитываются на старте.
+Идентификаторы зон другой модели телефона из чужого бэкапа игнорируются.
 
 ### 1.4 Экран настроек
 
-- Вход: General → секция Notifications, строка `glyph` (`OpenExteraGeneralActivity`,
-  `glyphRow`), видна только на Nothing. Не в Experimental Features, как
-  предполагает Notion.
-- В `OpenExteraOtherActivity` остался мертвый код: `glyphRow`/`glyphDividerRow`
-  всегда `-1`. В `SettingsHelper` есть `MOVED_ROWS "other:glyph" → "general"`,
-  алиас поиска `OEGeneral:glyph` и диплинк `exteraless_glyph`.
-- `OpenExteraGlyphActivity` (`BaseNekoSettingsActivity`, search guid 25000, префикс
-  `OEGlyph`): заголовок, 5 переключателей в порядке Enable, New message, Calls,
-  Recording, Screen off, затем Preview и инфо-текст `OEGlyphInfo`.
-- Enable дергает `init()` или `shutdown()`. Остальные только пишут конфиг.
-  Зависимые строки не скрываются и не дизейблятся при выключенном Enable.
-- Preview: на не-Nothing показывает bulletin `OEGlyphUnsupported`, иначе
-  `GlyphController.preview()`.
+- Вход: Experimental Features, группа General, строка `OEGlyphTitle`
+  (`NekoExperimentalSettingsActivity`, `glyphRow`). Строка убирается, если
+  устройство не поддержано. Сам экран Experimental Features виден только при
+  включенном «Allow Experimental Features», но работа глифов от этого флага не
+  зависит.
+- Диплинк `exteraless_glyph` и поиск по настройкам (`SettingsHelper`, search guid
+  25000, префикс `OEGlyph`) открывают тот же экран. В поиске экран
+  регистрируется только на поддержанных устройствах. Ключи строк из `addRow(...)`
+  склеиваются с префиксом: `eventCall` находится как `OEGlyphEventCall`.
+- В General и Other строк про глифы больше нет.
+
+**Главный экран** (`OpenExteraGlyphActivity`): Glyph Interface (главный
+выключатель, дергает `init()` или `shutdown()`), секция Events с тремя
+правилами событий, секция Chats (Add chat и по строке на правило чата,
+отсортированы по имени), Messages only when screen is off, инфо-текст
+`OEGlyphInfo`.
+
+- Справа у строки правила: `Off`, `All glyphs` или идентификаторы зон через
+  запятую в порядке профиля. На матрице для включенного правила значение пустое.
+- При выключенном Glyph Interface все строки ниже него приглушены и не
+  нажимаются.
+- Add chat открывает `DialogsActivity` в режиме `onlySelect` без проверки права
+  писать (правило полезно и для каналов), затем редактор для выбранного чата.
+- Имя чата ищется в кэше текущего аккаунта, затем остальных; если не нашлось,
+  показывается числовой идентификатор.
+- В `onResume` список перестраивается: правила меняются в редакторе.
+
+**Редактор правила** (`OpenExteraGlyphRuleActivity`, аргумент `event` или
+`dialog_id`): Enabled, секция Glyphs с галочкой на каждую зону (только `STRIP`),
+Preview, Delete rule (только для чата), пояснение.
+
+- Правило чата создается в хранилище при открытии редактора для нового чата.
+- Каждое изменение сохраняется сразу. Если отмечены все зоны, сохраняется
+  пустой набор. Снять последнюю зону нельзя, показывается bulletin
+  `OEGlyphRuleLastZone`.
+- Preview играет отмеченные зоны через `GlyphController.preview(zones, event)`.
+  Правило чата проигрывается как сообщение. Строка неактивна при выключенном
+  главном выключателе.
 
 ### 1.5 Хуки в коде Telegram
+
+В чужих файлах только однострочные вызовы контроллера.
 
 | Событие | Место | Вызов |
 |---|---|---|
 | Старт приложения | `ApplicationLoader` (после остальных `*Config.init()`) | `GlyphConfig.init()`, `GlyphController.init()` |
-| Новые сообщения | `NotificationsController.processNewMessages`, только при `isLast`, после проверки на пустой список | `onNewMessages(messageObjects, currentAccount)` |
-| Запись голосового: старт/резюм | `MediaController`, 4 места (`onRecordingStarted`, `onRecordingResumed` у recorder V2, резюм и старт у старого) | `onRecordingStarted()` |
+| Сообщение | `NotificationsController.processNewMessages`, в начале блока `if (value)`, где сообщение уходит в `delayedPushMessages` | `onMessageNotified(originalDialogId, currentAccount)` |
+| Запись голосового: старт и резюм | `MediaController`, 4 места | `onRecordingStarted()` |
 | Запись: стоп | `MediaController.stopRecording(...)`, первой строкой | `onRecordingStopped()` |
-| Входящий звонок | `VoIPService.dispatchStateChanged`: `STATE_WAITING_INCOMING && !isOutgoing` | `onIncomingCallStarted()` |
+| Входящий звонок | `VoIPService.dispatchStateChanged`: `STATE_WAITING_INCOMING && !isOutgoing` | `onIncomingCallStarted(user.id или 0, currentAccount)` |
 | Конец звонка | там же на `ESTABLISHED/ENDED/FAILED/HANGING_UP` и в `onDestroy` | `onIncomingCallStopped()` |
+
+Хук сообщений стоит там, куда доходят только сообщения, по которым клиент
+покажет уведомление. Заглушенные чаты, выключенные глобально уведомления,
+открытый сейчас чат и отфильтрованные сообщения до него не доходят, поэтому
+своих проверок `isOutOwner` и `isDialogMuted` у контроллера нет. В хук передается
+`originalDialogId`: `dialogId` в этом месте для упоминаний уже подменен на
+отправителя.
 
 Стоп-хуки не проверяют конфиг намеренно: гасить надо всегда.
 
 ### 1.6 Поведение
 
-Вся работа с SDK идет на main-хендлере (`handler.post`).
+**Потоки.** Все решения контроллера принимаются на главном хендлере; хуки
+приходят с других потоков и сразу делают `handler.post`. `StripGlyphEngine`
+держит все обращения к SDK на собственном `HandlerThread` с именем `glyph`
+(`setFrameColors` это синхронный binder-вызов). `MatrixGlyphEngine` работает на
+главном хендлере.
 
-**Новое сообщение** (`onNewMessages`):
+**Инициализация.** `init()` ничего не делает, пока фича выключена или
+устройство не поддержано. Иначе создает движок по `kind` и вызывает `start()`
+через `START_DELAY_MS = 3000` (ранний бинд после перезагрузки может не
+сработать). `shutdown()` останавливает движок и сбрасывает состояние.
 
-1. Нужны `enabled` и `onNewMessage`.
-2. Хук стоит до фильтрации уведомлений, поэтому свой фильтр: в пачке должно быть
-   хотя бы одно сообщение не `isOutOwner()` и из чата без `isDialogMuted`.
-   Других проверок нет: открытый чат, выключенные глобально уведомления, тип
-   чата, реакции и т.п. не учитываются. Какой именно чат сработал, дальше не
-   передается.
-3. На main: пропуск, если не готовы (`ensureReady`), если `glyphBusy` (идет запись
-   или звонок), если `screenOffOnly` и экран включен (`PowerManager.isInteractive`).
-4. Кулдаун `FLASH_COOLDOWN_MS = 2500` мс от прошлой вспышки, общий на все чаты и
-   аккаунты. Сообщения в окне кулдауна теряются, не откладываются.
-5. Matrix: `showMatrixLogo()`. Strip: `pulseStrip()`.
+**Сообщение** (`onMessageNotified`):
 
-**Запись и звонок**: флаги `recordingActive` / `callActive`, общая точка
-`updateGlyphActivity()`. Пока активна хотя бы одна причина, `glyphBusy = true` и
-идет «дыхание»: strip `breatheStrip()`, matrix `startMatrixBreathing()`. Когда обе
-сняты: `stopMatrixBreathing()` и `stripManager.turnOff()`. Режим «только при
-выключенном экране» на них не действует. Если на старте `ensureReady()` false,
-`glyphBusy` остается false и анимация не начнется до следующей смены состояния.
+1. выход, если фича выключена;
+2. выход, если включен режим «только при выключенном экране» и экран включен
+   (`PowerManager.isInteractive()`);
+3. выход, если идет звонок или запись;
+4. выход, если правило выключено;
+5. антидребезг: выход, если предыдущая вспышка с тем же набором зон стартовала
+   меньше `RETRIGGER_GUARD_MS = 300` мс назад. Нужен только для пачки сообщений,
+   пришедших разом. Кулдауна между вспышками нет;
+6. `play(зоны, PULSE)`. Идущая вспышка прерывается и начинается заново.
 
-**Анимации** (все захардкожены, выбора нет):
+**Звонок и запись.** Приоритет `CALL` > `RECORDING` > `MESSAGE`. На каждом
+старте и стопе контроллер пересчитывает активное событие
+(`updateActiveEvent`). Появилось или сменилось: `play(зоны события, BREATHE)`.
+Не осталось ни одного: `stopEffect()`. Звонок забирает глифы у записи и
+возвращает их, когда заканчивается. Для звонка учитывается правило чата
+звонящего. Событие с выключенным правилом не считается активным: не «дышит» и
+не блокирует вспышки сообщений. Режим «только при выключенном экране» на звонок
+и запись не действует.
 
-| Имя | Устройство | Параметры |
+**Preview** (`preview(zones, event)`): для `MESSAGE` играет `PULSE`, для
+остальных `BREATHE` в течение `PREVIEW_BREATHE_MS = 3000`, затем `stopEffect()`.
+Не учитывает режим выключенного экрана, антидребезг и `enabled` правила, но не
+запускается во время реального звонка или записи.
+
+**Эффекты** (`GlyphEffects`, яркость 0..`MAX_BRIGHTNESS = 4095`):
+
+| Имя | Форма | Длительность |
 |---|---|---|
-| `pulseStrip` | strip | все каналы A..E, period 600, cycles 2, interval 120, `animate` |
-| `breatheStrip` | strip | все каналы A..E, period 1500, cycles 600 (страховка), interval 0 |
-| лого | matrix | `exteraless_icon_monochrome`, тонированный в белый, scale 150, яркость 255, слой top, `setAppMatrixFrame`, автоскрытие через `LOGO_SHOW_MS = 3000` (`closeAppMatrix`) |
-| дыхание лого | matrix | тот же кадр, яркость 12..255 шагом 10 каждые 120 мс, лимит 5000 шагов (~10 минут) |
+| `PULSE` | две вспышки: подъем 300 мс, спуск 300 мс, пауза 120 мс между ними | 1320 мс |
+| `BREATHE` | подъем 750 мс и спуск 750 мс по кругу | бесконечно (`-1`) |
 
-Bitmap лого кэшируется в `matrixLogoBitmap`. `setAppMatrixFrame` выбран вместо
-`setMatrixFrame`, чтобы не конфликтовать с Glyph Toys.
+`GlyphEffect.brightness(tMs, channelIndexInRule, channelCountInRule)` получает
+номер канала внутри правила. Сейчас он не используется, параметры оставлены для
+эффектов с движением по каналам.
 
-**Preview**: если сервис еще не подключен, ставит `previewPending` и доигрывает из
-колбэка подключения. Иначе на matrix показывает лого, на strip `pulseStrip()`.
-Кулдаун, `glyphBusy` и `screenOffOnly` не учитывает.
+**`StripGlyphEngine`.**
 
-**Shutdown** (выключение Enable): сброс всех флагов и таймеров, `unInit()` у обоих
-менеджеров. Перед `unInit` не вызываются `turnOff()` / `closeSession()` /
-`closeAppMatrix()`.
+- `GlyphManager.animate()` не используется. Кадры собираются здесь и уходят в
+  `setFrameColors(int[])` с шагом `FRAME_MS = 20`: каналы выбранных зон получают
+  значение эффекта, остальные 0.
+- Сессия открывается только на время показа: `openSession()` перед первым
+  кадром, после конца эффекта кадр из нулей и `closeSession()` через
+  `SESSION_IDLE_MS = 3000` без новых эффектов. Постоянно открытая сессия гасит
+  системный индикатор Essential Notifications.
+- `play()` во время другого эффекта прерывает его и стартует с `t = 0`. Очереди
+  нет.
+- Зоны, которых нет у устройства, игнорируются. Если после этого набор пуст,
+  берутся все зоны.
+- Если сервис не готов, `play()` биндится заново и запоминает запрос. Запрос
+  проигрывается при подключении, если ему меньше `PENDING_PLAY_MS = 2000`, иначе
+  выбрасывается. Бинд, не давший рабочего сервиса за `REBIND_AFTER_MS = 5000`,
+  при следующем `play()` сбрасывается и повторяется.
+- `onServiceDisconnected` отпускает привязку целиком (SDK сам не
+  переподключается). Колбэки старой привязки отсекаются счетчиком `generation`.
+- `register()` вернул `false`: запись в `FileLog`, движок не готов.
+- `stop()`: кадр из нулей, `closeSession()`, `unInit()`. Все вызовы SDK в
+  `try/catch (Throwable)` с `FileLog.e`.
+
+**`MatrixGlyphEngine`.** Зоны игнорируются, показывается логотип mauve.
+
+- Конечный эффект: логотип на полной яркости, скрытие через
+  `LOGO_SHOW_MS = 3000` (`closeAppMatrix()`). Бесконечный: «дыхание» яркости
+  12..255 шагом 10 каждые 120 мс до `stopEffect()`, со страховкой в 5000 шагов
+  (около 10 минут).
+- Логотип хранится готовыми кадрами `LOGO_25` (Phone (3)) и `LOGO_13`
+  (Phone (4a) Pro): строка на ряд, `.` выключено, `-` тусклый шеврон, `#` яркий.
+  Кадр выбирается по `Common.getDeviceMatrixLength()`; при другом размере
+  логотип не показывается, в `FileLog` идет запись.
+- Кадр это `int[side * side]`, значение `#` равно `4095 * brightness / 255`, `-`
+  это 55 % от него (`LOGO_DIM_PERCENT`). Уходит в `setAppMatrixFrame(int[])`:
+  слой приложения лежит под Glyph Toys и с ними не конфликтует.
+- Повторное подключение и отложенный запрос устроены так же, как у
+  `StripGlyphEngine`.
 
 ### 1.7 Известные проблемы и ограничения
 
-Из Notion:
+Не проверено на устройстве (весь список ниже выведен из кода и байткода SDK):
 
-- светятся все глифы сразу на любое уведомление;
-- большой кулдаун между срабатываниями (2.5 с, глобальный, с потерей событий);
-- анимацию сменить нельзя;
-- нет правил по типу уведомления и по чату.
+- README SDK разрешает работу только foreground-приложениям. Сообщения
+  приходят, когда приложение в фоне; работает ли вспышка в этом случае, нужно
+  проверить в первую очередь;
+- соответствие зон на экране физическим глифам на каждой модели;
+- вид логотипа на матрице и разница яркости шевронов. Яркость LED нелинейна,
+  `LOGO_DIM_PERCENT` может потребовать подбора;
+- возвращается ли индикатор Essential Notifications после закрытия сессии;
+- первая вспышка после перезагрузки телефона.
 
-Найдено в коде:
+Ограничения:
 
-- в `onNewMessages` теряется контекст (чат, тип сообщения), контроллер получает
-  только факт «что-то пришло»;
-- фильтр уведомлений неполный (см. 1.6, п. 2), вспышка возможна без уведомления;
-- strip: каналы задаются только целиком A..E, без отдельных зон и без учета
-  раскладки конкретной модели. На моделях без зон D/E (все, кроме Phone (1) и
-  (2)) эти вызовы пустые, так что по факту всегда горит все;
-- сессия открывается на старте и не закрывается, пока фича включена. По
-  сообщениям разработчиков открытая сессия гасит системный индикатор Essential
-  Notifications; README требует закрывать сессию, когда глифы не нужны;
-- после `pulseStrip()` нет `turnOff()`; SDK явный ноль в конце `animate` не шлет;
-- `animate()` дает одну форму (линейное «дыхание» до полной яркости) и ломается
-  при `period > 8192` мс; текущие 600 и 1500 в безопасных пределах;
-- README разрешает SDK только foreground-приложениям. Сообщения приходят, когда
-  приложение в фоне; работает ли вспышка в этом случае, нужно проверить на
-  устройстве;
-- бинд к сервису идет сразу в `ApplicationLoader`; после ребута ранний `init`
-  может не сработать (см. `glyphs-api-spec.md`, 1.4);
-- на `onServiceDisconnected` нет переподключения, а `initialized` остается true,
-  так что `init()` повторно не биндит до `shutdown()`;
-- незарегистрированная strip-модель (сейчас это Phone (4b) и (3a) Lite) молча
-  ничего не делает, при этом строка настроек на ней видна;
-- нет приоритетов между событиями: вспышка сообщения во время записи/звонка
-  просто отбрасывается;
-- комментарии в коде глифов на русском; по `AGENTS.md` при правке переводить на
-  английский;
-- инфо-текст `OEGlyphInfo` упоминает только Phone (3) как matrix-устройство, хотя
-  код поддерживает и `25111p`;
-- расхождение с Notion: экран живет в General → Notifications, а не в
-  Experimental Features.
+- анимацию выбрать нельзя: `PULSE` для сообщений, `BREATHE` для звонка и записи;
+- на матричных моделях нет выбора зон, правило только включает и выключает
+  логотип;
+- Phone (3a) Lite не поддержан, в SDK его нет;
+- на Phone (1) нужен боевой `GLYPH_API_KEY`; с ключом `test` на прошивках до
+  Android 16 глифы работают только в debug-режиме (см. 1.2);
+- сообщение во время звонка или записи вспышку не вызывает и не откладывается;
+- правило чата в Preview всегда проигрывается как сообщение, хотя действует и
+  на звонки;
+- правила чатов общие для всех аккаунтов и хранятся по `dialogId`.
+  Идентификаторы секретных чатов локальные, поэтому правило секретного чата
+  может совпасть с другим секретным чатом на другом аккаунте;
+- `MatrixGlyphEngine` вызывает SDK на главном потоке;
+- тестов на глифы нет.
