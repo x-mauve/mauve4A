@@ -34,8 +34,11 @@ public final class GlyphController {
     /** Binding right after a reboot can fail silently, so give the system a moment. */
     private static final long START_DELAY_MS = 3000L;
 
-    /** Minimum gap between message flashes, so a busy chat does not turn into a strobe. */
-    private static final long FLASH_COOLDOWN_MS = 2500L;
+    /**
+     * A batch of messages is reported one by one within a few milliseconds.
+     * Restarting the same flash for each of them would only make it stutter.
+     */
+    private static final long RETRIGGER_GUARD_MS = 300L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -48,6 +51,7 @@ public final class GlyphController {
     /** A recording or a call owns the glyphs, so message flashes are skipped. */
     private boolean glyphBusy;
     private long lastFlashAt;
+    private Set<String> lastFlashZones;
 
     private final Runnable startRunnable = () -> {
         GlyphEngine local = activeEngine();
@@ -95,6 +99,7 @@ public final class GlyphController {
             callDialogId = 0;
             glyphBusy = false;
             lastFlashAt = 0;
+            lastFlashZones = null;
         });
     }
 
@@ -116,12 +121,14 @@ public final class GlyphController {
             if (GlyphConfig.screenOffOnly() && isScreenOn()) {
                 return;
             }
+            Set<String> zones = resolveZones(GlyphEvent.MESSAGE, dialogId);
             long now = SystemClock.uptimeMillis();
-            if (now - lastFlashAt < FLASH_COOLDOWN_MS) {
+            if (zones.equals(lastFlashZones) && now - lastFlashAt < RETRIGGER_GUARD_MS) {
                 return;
             }
             lastFlashAt = now;
-            local.play(resolveZones(GlyphEvent.MESSAGE, dialogId), GlyphEffects.PULSE);
+            lastFlashZones = zones;
+            local.play(zones, GlyphEffects.PULSE);
         });
     }
 
