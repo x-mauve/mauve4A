@@ -9,6 +9,8 @@
     <string name="OEGlyphEventMessage">New messages</string>
     <string name="OEGlyphEventCall">Incoming calls</string>
     <string name="OEGlyphEventRecording">Voice recording</string>
+    <string name="OEGlyphChats">Chats</string>
+    <string name="OEGlyphAddChat">Add chat</string>
     <string name="OEGlyphRuleOff">Off</string>
     <string name="OEGlyphRuleAll">All glyphs</string>
     <string name="OEGlyphRuleEnabled">Enabled</string>

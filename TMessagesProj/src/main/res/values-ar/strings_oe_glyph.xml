@@ -8,6 +8,8 @@
     <string name="OEGlyphEventMessage">الرسائل الجديدة</string>
     <string name="OEGlyphEventCall">المكالمات الواردة</string>
     <string name="OEGlyphEventRecording">التسجيل الصوتي</string>
+    <string name="OEGlyphChats">المحادثات</string>
+    <string name="OEGlyphAddChat">إضافة محادثة</string>
     <string name="OEGlyphRuleOff">متوقف</string>
     <string name="OEGlyphRuleAll">كل الأضواء</string>
     <string name="OEGlyphRuleEnabled">مفعّل</string>

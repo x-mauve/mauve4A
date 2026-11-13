@@ -8,6 +8,8 @@
     <string name="OEGlyphEventMessage">Новые сообщения</string>
     <string name="OEGlyphEventCall">Входящие звонки</string>
     <string name="OEGlyphEventRecording">Запись голосовых</string>
+    <string name="OEGlyphChats">Чаты</string>
+    <string name="OEGlyphAddChat">Добавить чат</string>
     <string name="OEGlyphRuleOff">Выкл.</string>
     <string name="OEGlyphRuleAll">Все глифы</string>
     <string name="OEGlyphRuleEnabled">Включено</string>
