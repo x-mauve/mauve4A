@@ -7,10 +7,8 @@ import tw.nekomimi.nekogram.NekoConfig
 import tw.nekomimi.nekogram.config.ConfigItem
 
 /**
- * Настройки интеграции с Nothing Glyph (подсветка задней панели Nothing Phone).
- *
- * Схема повторяет [app.exteraless.OpenExteraConfig]: те же SharedPreferences,
- * тот же [ConfigItem]. Ключи с префиксом OEGlyph.
+ * Settings of the Nothing Glyph integration. Stored like
+ * [app.exteraless.OpenExteraConfig]: same SharedPreferences, same [ConfigItem].
  */
 object GlyphConfig {
 
@@ -26,25 +24,29 @@ object GlyphConfig {
     @JvmStatic
     fun getPreferences(): SharedPreferences = NekoConfig.getPreferences()
 
-    /** Мастер-переключатель: без него контроллер не биндится к системному сервису глифов. */
+    /** Master switch. While it is off the controller never binds to the glyph service. */
     @JvmField
     val enabled = addConfig("OEGlyphEnabled", ConfigItem.configTypeBool, false)
 
-    /** Вспышка глифов на входящее сообщение. */
+    /** Flash the glyphs on an incoming message. */
     @JvmField
     val onNewMessage = addConfig("OEGlyphNewMessage", ConfigItem.configTypeBool, true)
 
-    /** «Дыхание» глифов, пока идёт запись голосового. */
+    /** Breathe while a voice message is being recorded. */
     @JvmField
     val onRecording = addConfig("OEGlyphRecording", ConfigItem.configTypeBool, true)
 
-    /** «Дыхание» глифов, пока звонит входящий VoIP-звонок. */
+    /** Breathe while an incoming call is ringing. */
     @JvmField
     val onCall = addConfig("OEGlyphCalls", ConfigItem.configTypeBool, true)
 
-    /** Реагировать на сообщения только при выключенном экране. */
+    /** React to messages only while the screen is off. */
     @JvmField
     val screenOffOnly = addConfig("OEGlyphScreenOff", ConfigItem.configTypeBool, false)
+
+    /** The rule set as JSON, parsed and written by [GlyphRules]. */
+    @JvmField
+    val rules = addConfig("OEGlyphRules", ConfigItem.configTypeString, "")
 
     @JvmStatic
     fun enabled(): Boolean = enabled.Bool()
@@ -83,11 +85,15 @@ object GlyphConfig {
                     when (item.type) {
                         ConfigItem.configTypeBool ->
                             item.value = preferences.getBoolean(item.key, item.defaultValue as Boolean)
+                        ConfigItem.configTypeString ->
+                            item.value = preferences.getString(item.key, item.defaultValue as String)
+                                ?: item.defaultValue
                     }
                 } catch (e: Exception) {
                     FileLog.e(e)
                 }
             }
+            GlyphRules.load(rules.String())
             configLoaded = true
         }
     }
