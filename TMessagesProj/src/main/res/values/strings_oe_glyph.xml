@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Строки интеграции с Nothing Glyph. -->
+<!-- Nothing Glyph settings. -->
 <resources>
     <string name="OEGlyphTitle">Nothing Glyph</string>
     <string name="OEGlyphEnable">Glyph Interface</string>
@@ -20,5 +20,5 @@
     <string name="OEGlyphRuleDelete">Delete rule</string>
     <string name="OEGlyphRuleInfoEvent">Chats with a rule of their own ignore this one.</string>
     <string name="OEGlyphRuleInfoChat">This rule replaces the event rules for messages and calls from this chat, on all accounts.</string>
-    <string name="OEGlyphInfo">Lights up the Glyph Interface on the back of your Nothing phone: a flash for incoming messages, the mauve logo on the Phone (3) Glyph Matrix and a breathing glow while recording voice messages or receiving a call. Muted chats never trigger the flash.</string>
+    <string name="OEGlyphInfo">Lights up the glyphs on the back of your Nothing phone. Pick which glyphs flash for new messages and which glow for incoming calls and voice recording, and give single chats a rule of their own. Muted chats never trigger a flash. Phone (3) and Phone (4a) Pro show the mauve logo on the Glyph Matrix instead, with no glyphs to pick.</string>
 </resources>

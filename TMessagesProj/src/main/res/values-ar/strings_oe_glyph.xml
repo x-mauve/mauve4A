@@ -19,5 +19,5 @@
     <string name="OEGlyphRuleDelete">حذف القاعدة</string>
     <string name="OEGlyphRuleInfoEvent">المحادثات التي لها قاعدة خاصة تتجاهل هذه القاعدة.</string>
     <string name="OEGlyphRuleInfoChat">تحل هذه القاعدة محل قواعد الأحداث للرسائل والمكالمات من هذه المحادثة في جميع الحسابات.</string>
-    <string name="OEGlyphInfo">تُضيء واجهة Glyph على ظهر هاتف Nothing: وميض للرسائل الواردة، وشعار mauve على Glyph Matrix في Phone (3)، وتوهج متنفّس أثناء تسجيل الرسائل الصوتية أو استقبال مكالمة. المحادثات المكتومة لا تُطلق الوميض أبدًا.</string>
+    <string name="OEGlyphInfo">تُضيء الأضواء على ظهر هاتف Nothing. اختر الأضواء التي تومض عند الرسائل الجديدة والتي تتوهج عند المكالمات الواردة والتسجيل الصوتي، وخصّص قاعدة لمحادثات بعينها. المحادثات المكتومة لا تُطلق الوميض أبدًا. في Phone (3) و Phone (4a) Pro يظهر شعار mauve على Glyph Matrix بدلًا من ذلك، ولا يمكن اختيار الأضواء.</string>
 </resources>
