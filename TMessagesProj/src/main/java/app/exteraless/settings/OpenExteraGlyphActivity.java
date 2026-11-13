@@ -3,40 +3,43 @@ package app.exteraless.settings;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.view.View;
 
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
-import org.telegram.ui.Components.BulletinFactory;
+import org.telegram.ui.Cells.TextSettingsCell;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import app.exteraless.glyph.GlyphConfig;
 import app.exteraless.glyph.GlyphController;
+import app.exteraless.glyph.GlyphDevice;
 import app.exteraless.glyph.GlyphEvent;
 import app.exteraless.glyph.GlyphRule;
 import app.exteraless.glyph.GlyphRules;
+import app.exteraless.glyph.GlyphZone;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 
-/**
- * Экран «Nothing Glyph» раздела exteraless: подсветка задней панели Nothing Phone
- * на события клиента. На устройствах других вендоров переключатели видны, но
- * контроллер не инициализируется — превью об этом честно сообщает.
- */
+/** Nothing Glyph settings: the master switch and the rules that pick the glyphs. */
 public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
 
     private int glyphHeaderRow;
-    private int glyphEnableRow;
-    private int glyphNewMessageRow;
-    private int glyphCallsRow;
-    private int glyphRecordingRow;
-    private int glyphScreenOffRow;
-    private int glyphPreviewRow;
-    private int glyphDividerRow;
+    private int enableRow;
+    private int enableDividerRow;
+    private int eventsHeaderRow;
+    private int eventMessageRow;
+    private int eventCallRow;
+    private int eventRecordingRow;
+    private int eventsDividerRow;
+    private int screenOffRow;
+    private int infoRow;
 
     public OpenExteraGlyphActivity() {
         super();
@@ -49,17 +52,30 @@ public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
     }
 
     @Override
+    public void onResume() {
+        // The rule editor changes the rules while this screen is in the back stack.
+        updateRows();
+        super.onResume();
+    }
+
+    // Row keys are joined with the search prefix to find the row title, so
+    // "eventCall" is found in settings search as OEGlyphEventCall.
+    @Override
     protected void updateRows() {
         super.updateRows();
 
         glyphHeaderRow = addRow("glyphHeader");
-        glyphEnableRow = addRow(GlyphConfig.enabled.getKey());
-        glyphNewMessageRow = addRow("OEGlyphNewMessage");
-        glyphCallsRow = addRow("OEGlyphCalls");
-        glyphRecordingRow = addRow("OEGlyphRecording");
-        glyphScreenOffRow = addRow(GlyphConfig.screenOffOnly.getKey());
-        glyphPreviewRow = addRow("glyphPreview");
-        glyphDividerRow = addRow();
+        enableRow = addRow("enable");
+        enableDividerRow = addRow();
+
+        eventsHeaderRow = addRow("eventsHeader");
+        eventMessageRow = addRow("eventMessage");
+        eventCallRow = addRow("eventCall");
+        eventRecordingRow = addRow("eventRecording");
+        eventsDividerRow = addRow();
+
+        screenOffRow = addRow("screenOff");
+        infoRow = addRow();
     }
 
     @Override
@@ -94,7 +110,7 @@ public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected void onItemClick(View view, int position, float x, float y) {
-        if (position == glyphEnableRow) {
+        if (position == enableRow) {
             boolean enabled = GlyphConfig.enabled.toggleConfigBool();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(enabled);
@@ -104,41 +120,42 @@ public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
             } else {
                 GlyphController.getInstance().shutdown();
             }
-        } else if (position == glyphNewMessageRow) {
-            boolean enabled = toggleEventRule(GlyphEvent.MESSAGE);
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(enabled);
-            }
-        } else if (position == glyphCallsRow) {
-            boolean enabled = toggleEventRule(GlyphEvent.CALL);
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(enabled);
-            }
-        } else if (position == glyphRecordingRow) {
-            boolean enabled = toggleEventRule(GlyphEvent.RECORDING);
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(enabled);
-            }
-        } else if (position == glyphScreenOffRow) {
+            // Rebind everything below the switch, it follows its state.
+            listAdapter.notifyItemRangeChanged(enableRow + 1, rowCount - enableRow - 1);
+        } else if (position == eventMessageRow) {
+            presentFragment(OpenExteraGlyphRuleActivity.forEvent(GlyphEvent.MESSAGE));
+        } else if (position == eventCallRow) {
+            presentFragment(OpenExteraGlyphRuleActivity.forEvent(GlyphEvent.CALL));
+        } else if (position == eventRecordingRow) {
+            presentFragment(OpenExteraGlyphRuleActivity.forEvent(GlyphEvent.RECORDING));
+        } else if (position == screenOffRow) {
             boolean enabled = GlyphConfig.screenOffOnly.toggleConfigBool();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(enabled);
             }
-        } else if (position == glyphPreviewRow) {
-            if (!GlyphController.getInstance().isSupported()) {
-                BulletinFactory.of(this)
-                        .createSimpleBulletin(R.raw.info, getString(R.string.OEGlyphUnsupported))
-                        .show();
-                return;
-            }
-            GlyphController.getInstance().preview();
         }
     }
 
-    private static boolean toggleEventRule(GlyphEvent event) {
-        GlyphRule rule = GlyphRules.eventRule(event);
-        GlyphRules.setEventRule(event, new GlyphRule(!rule.enabled, rule.zones));
-        return !rule.enabled;
+    /** Short description of a rule, shown next to its row. */
+    private static String ruleSummary(GlyphRule rule) {
+        if (!rule.enabled) {
+            return getString(R.string.OEGlyphRuleOff);
+        }
+        GlyphDevice device = GlyphDevice.current();
+        if (device.kind != GlyphDevice.Kind.STRIP) {
+            // The Glyph Matrix has no zones to list.
+            return "";
+        }
+        List<String> labels = new ArrayList<>();
+        for (GlyphZone zone : device.zones) {
+            if (rule.zones.contains(zone.id)) {
+                labels.add(zone.label);
+            }
+        }
+        if (labels.isEmpty() || labels.size() == device.zones.size()) {
+            return getString(R.string.OEGlyphRuleAll);
+        }
+        return TextUtils.join(", ", labels);
     }
 
     private class ListAdapter extends BaseListAdapter {
@@ -148,52 +165,59 @@ public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
         }
 
         @Override
+        public boolean isEnabled(RecyclerView.ViewHolder holder) {
+            if (holder.getAdapterPosition() != enableRow && !GlyphConfig.enabled()) {
+                return false;
+            }
+            return super.isEnabled(holder);
+        }
+
+        @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position, boolean partial) {
+            // Cells are recycled, so the dimmed state is set on every bind.
+            boolean active = GlyphConfig.enabled();
             switch (holder.getItemViewType()) {
                 case TYPE_HEADER: {
                     HeaderCell cell = (HeaderCell) holder.itemView;
                     if (position == glyphHeaderRow) {
                         cell.setText(getString(R.string.OEGlyphTitle));
+                    } else if (position == eventsHeaderRow) {
+                        cell.setText(getString(R.string.OEGlyphEvents));
                     }
                     break;
                 }
                 case TYPE_CHECK: {
                     TextCheckCell cell = (TextCheckCell) holder.itemView;
-                    if (position == glyphEnableRow) {
+                    cell.setEnabled(position == enableRow || active, null);
+                    if (position == enableRow) {
                         cell.setTextAndCheck(getString(R.string.OEGlyphEnable),
-                                GlyphConfig.enabled(), true);
-                    } else if (position == glyphNewMessageRow) {
-                        cell.setTextAndCheck(getString(R.string.OEGlyphNewMessage),
-                                GlyphRules.eventRule(GlyphEvent.MESSAGE).enabled, true);
-                    } else if (position == glyphCallsRow) {
-                        cell.setTextAndCheck(getString(R.string.OEGlyphCalls),
-                                GlyphRules.eventRule(GlyphEvent.CALL).enabled, true);
-                    } else if (position == glyphRecordingRow) {
-                        cell.setTextAndCheck(getString(R.string.OEGlyphRecording),
-                                GlyphRules.eventRule(GlyphEvent.RECORDING).enabled, true);
-                    } else if (position == glyphScreenOffRow) {
+                                GlyphConfig.enabled(), false);
+                    } else if (position == screenOffRow) {
                         cell.setTextAndCheck(getString(R.string.OEGlyphScreenOff),
                                 GlyphConfig.screenOffOnly(), false);
                     }
                     break;
                 }
-                case TYPE_TEXT: {
-                    TextCell cell = (TextCell) holder.itemView;
-                    if (position == glyphPreviewRow) {
-                        cell.setColors(Theme.key_windowBackgroundWhiteGrayIcon,
-                                Theme.key_windowBackgroundWhiteBlackText);
-                        cell.setTextAndIcon(getString(R.string.OEGlyphPreview),
-                                R.drawable.deproko_baseline_lamp_filled_24, false);
+                case TYPE_SETTINGS: {
+                    TextSettingsCell cell = (TextSettingsCell) holder.itemView;
+                    if (position == eventMessageRow) {
+                        cell.setTextAndValue(getString(R.string.OEGlyphEventMessage),
+                                ruleSummary(GlyphRules.eventRule(GlyphEvent.MESSAGE)), true);
+                    } else if (position == eventCallRow) {
+                        cell.setTextAndValue(getString(R.string.OEGlyphEventCall),
+                                ruleSummary(GlyphRules.eventRule(GlyphEvent.CALL)), true);
+                    } else if (position == eventRecordingRow) {
+                        cell.setTextAndValue(getString(R.string.OEGlyphEventRecording),
+                                ruleSummary(GlyphRules.eventRule(GlyphEvent.RECORDING)), false);
                     }
+                    cell.setEnabled(active, null);
                     break;
                 }
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
-                    if (position == glyphDividerRow) {
-                        cell.setText(getString(R.string.OEGlyphInfo));
-                        cell.setBackground(Theme.getThemedDrawable(mContext,
-                                R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
-                    }
+                    cell.setText(getString(R.string.OEGlyphInfo));
+                    cell.setBackground(Theme.getThemedDrawable(mContext,
+                            R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
                     break;
                 }
             }
@@ -201,14 +225,17 @@ public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
 
         @Override
         public int getItemViewType(int position) {
-            if (position == glyphHeaderRow) {
+            if (position == glyphHeaderRow || position == eventsHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == glyphPreviewRow) {
-                return TYPE_TEXT;
-            } else if (position == glyphDividerRow) {
+            } else if (position == enableRow || position == screenOffRow) {
+                return TYPE_CHECK;
+            } else if (position == eventMessageRow || position == eventCallRow
+                    || position == eventRecordingRow) {
+                return TYPE_SETTINGS;
+            } else if (position == infoRow) {
                 return TYPE_INFO_PRIVACY;
             }
-            return TYPE_CHECK;
+            return TYPE_SHADOW;
         }
     }
 }

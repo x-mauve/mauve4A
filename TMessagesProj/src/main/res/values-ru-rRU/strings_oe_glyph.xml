@@ -2,15 +2,14 @@
 <resources>
     <string name="OEGlyphTitle">Nothing Glyph</string>
     <string name="OEGlyphEnable">Glyph Interface</string>
-    <string name="OEGlyphNewMessage">Вспышка при новых сообщениях</string>
-    <string name="OEGlyphCalls">Свечение при входящем звонке</string>
-    <string name="OEGlyphRecording">Свечение при записи голосовых</string>
     <string name="OEGlyphScreenOff">Сообщения только при выключенном экране</string>
     <string name="OEGlyphPreview">Предпросмотр</string>
-    <string name="OEGlyphUnsupported">Glyph Interface доступен только на Nothing Phone</string>
+    <string name="OEGlyphEvents">События</string>
     <string name="OEGlyphEventMessage">Новые сообщения</string>
     <string name="OEGlyphEventCall">Входящие звонки</string>
     <string name="OEGlyphEventRecording">Запись голосовых</string>
+    <string name="OEGlyphRuleOff">Выкл.</string>
+    <string name="OEGlyphRuleAll">Все глифы</string>
     <string name="OEGlyphRuleEnabled">Включено</string>
     <string name="OEGlyphRuleGlyphs">Глифы</string>
     <string name="OEGlyphZone">Глиф %s</string>
