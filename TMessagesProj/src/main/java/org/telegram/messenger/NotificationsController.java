@@ -1208,10 +1208,6 @@ public class NotificationsController extends BaseController implements Notificat
             return;
         }
 
-        if (isLast) {
-            app.exteraless.glyph.GlyphController.getInstance().onNewMessages(messageObjects, currentAccount);
-        }
-
         ArrayList<MessageObject> popupArrayAdd = new ArrayList<>(0);
         notificationsQueue.postRunnable(() -> {
             boolean added = false;
@@ -1395,6 +1391,7 @@ public class NotificationsController extends BaseController implements Notificat
                     FileLog.d("NotificationsController: process new messages, value is " + value + " ("+dialogId+", "+isChannel+", "+messageObject.isReactionPush+", "+messageObject.isStoryReactionPush+")");
                 }
                 if (value) {
+                    app.exteraless.glyph.GlyphController.getInstance().onMessageNotified(originalDialogId, currentAccount);
                     if (!isFcm) {
                         popup = addToPopupMessages(popupArrayAdd, messageObject, dialogId, isChannel, preferences);
                     }

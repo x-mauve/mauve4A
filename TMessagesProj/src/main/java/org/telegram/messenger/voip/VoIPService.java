@@ -4908,7 +4908,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
 		}
 		currentState = state;
 		if (state == STATE_WAITING_INCOMING && !isOutgoing) {
-			app.exteraless.glyph.GlyphController.getInstance().onIncomingCallStarted();
+			app.exteraless.glyph.GlyphController.getInstance().onIncomingCallStarted(user != null ? user.id : 0, currentAccount);
 		} else if (state == STATE_ESTABLISHED || state == STATE_ENDED || state == STATE_FAILED || state == STATE_HANGING_UP) {
 			app.exteraless.glyph.GlyphController.getInstance().onIncomingCallStopped();
 		}

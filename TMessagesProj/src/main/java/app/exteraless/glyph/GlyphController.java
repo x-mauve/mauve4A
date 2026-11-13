@@ -7,10 +7,7 @@ import android.os.PowerManager;
 import android.os.SystemClock;
 
 import org.telegram.messenger.ApplicationLoader;
-import org.telegram.messenger.MessageObject;
-import org.telegram.messenger.MessagesController;
 
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -47,6 +44,7 @@ public final class GlyphController {
 
     private boolean recordingActive;
     private boolean callActive;
+    private long callDialogId;
     /** A recording or a call owns the glyphs, so message flashes are skipped. */
     private boolean glyphBusy;
     private long lastFlashAt;
@@ -94,28 +92,20 @@ public final class GlyphController {
         handler.post(() -> {
             recordingActive = false;
             callActive = false;
+            callDialogId = 0;
             glyphBusy = false;
             lastFlashAt = 0;
         });
     }
 
-    public void onNewMessages(List<MessageObject> messages, int account) {
-        if (!GlyphConfig.enabled() || !GlyphConfig.onNewMessage() || messages == null) {
-            return;
-        }
-        // This hook runs before notifications are filtered, so muted chats are
-        // skipped here: a flash without a notification would be misleading.
-        MessagesController messagesController = MessagesController.getInstance(account);
-        boolean hasIncoming = false;
-        for (int i = 0; i < messages.size(); i++) {
-            MessageObject message = messages.get(i);
-            if (message != null && !message.isOutOwner()
-                    && !messagesController.isDialogMuted(message.getDialogId())) {
-                hasIncoming = true;
-                break;
-            }
-        }
-        if (!hasIncoming) {
+    /**
+     * A message the client is about to notify about. Muted chats, the chat
+     * that is open right now and filtered messages never get here.
+     */
+    public void onMessageNotified(long dialogId, int account) {
+        // Called on the notifications queue for every message, so bail out
+        // early and decide on the controller thread.
+        if (!GlyphConfig.enabled() || !GlyphConfig.onNewMessage()) {
             return;
         }
         handler.post(() -> {
@@ -131,7 +121,7 @@ public final class GlyphController {
                 return;
             }
             lastFlashAt = now;
-            local.play(allZones(), GlyphEffects.PULSE);
+            local.play(resolveZones(GlyphEvent.MESSAGE, dialogId), GlyphEffects.PULSE);
         });
     }
 
@@ -154,12 +144,13 @@ public final class GlyphController {
         });
     }
 
-    public void onIncomingCallStarted() {
+    public void onIncomingCallStarted(long dialogId, int account) {
         if (!GlyphConfig.enabled() || !GlyphConfig.onCall()) {
             return;
         }
         handler.post(() -> {
             callActive = true;
+            callDialogId = dialogId;
             updateGlyphActivity();
         });
     }
@@ -168,6 +159,7 @@ public final class GlyphController {
     public void onIncomingCallStopped() {
         handler.post(() -> {
             callActive = false;
+            callDialogId = 0;
             updateGlyphActivity();
         });
     }
@@ -201,7 +193,10 @@ public final class GlyphController {
             return;
         }
         glyphBusy = true;
-        local.play(allZones(), GlyphEffects.BREATHE);
+        Set<String> zones = callActive
+                ? resolveZones(GlyphEvent.CALL, callDialogId)
+                : resolveZones(GlyphEvent.RECORDING, 0);
+        local.play(zones, GlyphEffects.BREATHE);
     }
 
     /** The engine, initializing it first if the feature is on. Null when glyphs are unavailable. */
@@ -215,6 +210,11 @@ public final class GlyphController {
 
     private synchronized GlyphEngine activeEngine() {
         return initialized ? engine : null;
+    }
+
+    /** Zones to light for an event. {@code dialogId} is 0 when the event has no chat. */
+    private Set<String> resolveZones(GlyphEvent event, long dialogId) {
+        return allZones();
     }
 
     private static Set<String> allZones() {
