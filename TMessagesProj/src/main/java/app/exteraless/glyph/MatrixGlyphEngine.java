@@ -2,20 +2,15 @@ package app.exteraless.glyph;
 
 import android.content.ComponentName;
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 
-import com.nothing.ketchum.GlyphMatrixFrame;
+import com.nothing.ketchum.Common;
+import com.nothing.ketchum.Glyph;
 import com.nothing.ketchum.GlyphMatrixManager;
-import com.nothing.ketchum.GlyphMatrixObject;
-import com.nothing.ketchum.GlyphMatrixUtils;
 
 import org.telegram.messenger.FileLog;
-import org.telegram.messenger.R;
 
 import java.util.Set;
 
@@ -28,7 +23,7 @@ final class MatrixGlyphEngine implements GlyphEngine {
     /** How long the logo stays up for a finite effect. */
     private static final long LOGO_SHOW_MS = 3000L;
 
-    /** Brightness uses the SDK's 0..255 scale. */
+    /** Logo brightness, 0..255. */
     private static final long BREATH_STEP_MS = 120L;
     private static final int BREATH_STEP = 10;
     private static final int BREATH_MIN = 12;
@@ -36,6 +31,64 @@ final class MatrixGlyphEngine implements GlyphEngine {
 
     /** Stops the breathing after about ten minutes in case the stop event never comes. */
     private static final int MAX_BREATH_STEPS = 5000;
+
+    private static final int MAX_LED = 4095;
+
+    /** The left chevron is drawn at 55% opacity in the app icon. */
+    private static final int LOGO_DIM_PERCENT = 55;
+
+    private static final byte LEVEL_OFF = 0;
+    private static final byte LEVEL_DIM = 1;
+    private static final byte LEVEL_BRIGHT = 2;
+
+    // One string per matrix row: '.' off, '-' dim chevron, '#' bright chevron.
+    // Hand-drawn for each matrix size; scaling the vector icon smears the strokes.
+
+    /** Phone (3). */
+    private static final String[] LOGO_25 = {
+            ".........................",
+            ".........................",
+            ".........................",
+            ".........................",
+            ".........................",
+            "...........---...###.....",
+            "..........----..####.....",
+            ".........----..####......",
+            "........----..####.......",
+            ".......----..####........",
+            "......----..####.........",
+            ".....----..####..........",
+            ".....---...###...........",
+            ".....----..####..........",
+            "......----..####.........",
+            ".......----..####........",
+            "........----..####.......",
+            ".........----..####......",
+            "..........----..####.....",
+            "...........---...###.....",
+            ".........................",
+            ".........................",
+            ".........................",
+            ".........................",
+            "........................."
+    };
+
+    /** Phone (4a) Pro. */
+    private static final String[] LOGO_13 = {
+            ".............",
+            ".............",
+            ".....--..##..",
+            "....--..##...",
+            "...--..##....",
+            "..--..##.....",
+            ".--..##......",
+            "..--..##.....",
+            "...--..##....",
+            "....--..##...",
+            ".....--..##..",
+            ".............",
+            "............."
+    };
 
     /** A play request older than this is dropped when the service finally connects. */
     private static final long PENDING_PLAY_MS = 2000;
@@ -54,8 +107,9 @@ final class MatrixGlyphEngine implements GlyphEngine {
     private long boundAt;
     private boolean registered;
 
-    /** Rendering the vector on every breathing step would be wasteful. */
-    private Bitmap logoBitmap;
+    /** LEVEL_* per LED, row by row. Null when the matrix size is unknown. */
+    private final byte[] logoLevels;
+    private final int[] logoFrame;
 
     private boolean breathing;
     private int breathBrightness = BREATH_MAX;
@@ -93,6 +147,8 @@ final class MatrixGlyphEngine implements GlyphEngine {
     MatrixGlyphEngine(Context context, GlyphDevice device) {
         this.context = context.getApplicationContext();
         this.device = device;
+        logoLevels = loadLogo();
+        logoFrame = logoLevels == null ? null : new int[logoLevels.length];
     }
 
     @Override
@@ -210,48 +266,56 @@ final class MatrixGlyphEngine implements GlyphEngine {
     }
 
     private void showLogo(int brightness) {
-        if (!registered) {
+        if (!registered || logoLevels == null) {
             return;
         }
-        Bitmap bitmap = getLogoBitmap();
-        if (bitmap == null) {
-            return;
+        int bright = MAX_LED * Math.max(0, Math.min(BREATH_MAX, brightness)) / BREATH_MAX;
+        int dim = bright * LOGO_DIM_PERCENT / 100;
+        for (int i = 0; i < logoLevels.length; i++) {
+            byte level = logoLevels[i];
+            logoFrame[i] = level == LEVEL_BRIGHT ? bright : level == LEVEL_DIM ? dim : 0;
         }
         try {
-            GlyphMatrixObject object = new GlyphMatrixObject.Builder()
-                    .setImageSource(bitmap)
-                    // The mark sits in the middle of the icon canvas; scaling up crops to it.
-                    .setScale(150)
-                    .setBrightness(brightness)
-                    .build();
-            GlyphMatrixFrame frame = new GlyphMatrixFrame.Builder()
-                    .addTop(object)
-                    .build(context);
             // The app layer sits below Glyph Toys, so the two never fight over the matrix.
-            manager.setAppMatrixFrame(frame.render());
+            manager.setAppMatrixFrame(logoFrame);
         } catch (Throwable t) {
             FileLog.e(t);
         }
     }
 
-    private Bitmap getLogoBitmap() {
-        if (logoBitmap != null) {
-            return logoBitmap;
-        }
+    private static byte[] loadLogo() {
+        int side = 0;
         try {
-            Drawable icon = context.getDrawable(R.drawable.exteraless_icon_monochrome);
-            if (icon == null) {
-                return null;
-            }
-            // The SDK maps pixel lightness to LED brightness, so the black
-            // monochrome mark has to be tinted white to show up at all.
-            icon = icon.mutate();
-            icon.setTint(Color.WHITE);
-            logoBitmap = GlyphMatrixUtils.drawableToBitmap(icon);
+            side = Common.getDeviceMatrixLength();
         } catch (Throwable t) {
             FileLog.e(t);
         }
-        return logoBitmap;
+        String[] rows;
+        if (side == Glyph.DEVICE_23112_MATRIX_LENGTH) {
+            rows = LOGO_25;
+        } else if (side == Glyph.DEVICE_25111p_MATRIX_LENGTH) {
+            rows = LOGO_13;
+        } else {
+            FileLog.e("glyph: no logo for a matrix with side " + side);
+            return null;
+        }
+        if (rows.length != side) {
+            FileLog.e("glyph: the logo does not fit a matrix with side " + side);
+            return null;
+        }
+        byte[] levels = new byte[side * side];
+        for (int row = 0; row < side; row++) {
+            String line = rows[row];
+            if (line.length() != side) {
+                FileLog.e("glyph: the logo does not fit a matrix with side " + side);
+                return null;
+            }
+            for (int col = 0; col < side; col++) {
+                char c = line.charAt(col);
+                levels[row * side + col] = c == '#' ? LEVEL_BRIGHT : c == '-' ? LEVEL_DIM : LEVEL_OFF;
+            }
+        }
+        return levels;
     }
 
     private void hideLogo() {
