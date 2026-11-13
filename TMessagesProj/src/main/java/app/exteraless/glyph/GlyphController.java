@@ -110,7 +110,7 @@ public final class GlyphController {
     public void onMessageNotified(long dialogId, int account) {
         // Called on the notifications queue for every message, so bail out
         // early and decide on the controller thread.
-        if (!GlyphConfig.enabled() || !GlyphConfig.onNewMessage()) {
+        if (!GlyphConfig.enabled()) {
             return;
         }
         handler.post(() -> {
@@ -140,7 +140,7 @@ public final class GlyphController {
     }
 
     public void onRecordingStarted() {
-        if (!GlyphConfig.enabled() || !GlyphConfig.onRecording()) {
+        if (!GlyphConfig.enabled()) {
             return;
         }
         handler.post(() -> {
@@ -164,7 +164,7 @@ public final class GlyphController {
     }
 
     public void onIncomingCallStarted(long dialogId, int account) {
-        if (!GlyphConfig.enabled() || !GlyphConfig.onCall()) {
+        if (!GlyphConfig.enabled()) {
             return;
         }
         handler.post(() -> {

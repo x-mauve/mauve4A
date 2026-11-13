@@ -15,6 +15,9 @@ object GlyphConfig {
     private val sync = Any()
     private val configs = ArrayList<ConfigItem>()
 
+    /** Per-event toggles that the rules replaced. */
+    private val retiredKeys = arrayOf("OEGlyphNewMessage", "OEGlyphCalls", "OEGlyphRecording")
+
     @JvmStatic
     fun getConfigTypes(): Map<String, Int> = configs.associate { it.key to it.type }
 
@@ -28,18 +31,6 @@ object GlyphConfig {
     @JvmField
     val enabled = addConfig("OEGlyphEnabled", ConfigItem.configTypeBool, false)
 
-    /** Flash the glyphs on an incoming message. */
-    @JvmField
-    val onNewMessage = addConfig("OEGlyphNewMessage", ConfigItem.configTypeBool, true)
-
-    /** Breathe while a voice message is being recorded. */
-    @JvmField
-    val onRecording = addConfig("OEGlyphRecording", ConfigItem.configTypeBool, true)
-
-    /** Breathe while an incoming call is ringing. */
-    @JvmField
-    val onCall = addConfig("OEGlyphCalls", ConfigItem.configTypeBool, true)
-
     /** React to messages only while the screen is off. */
     @JvmField
     val screenOffOnly = addConfig("OEGlyphScreenOff", ConfigItem.configTypeBool, false)
@@ -50,15 +41,6 @@ object GlyphConfig {
 
     @JvmStatic
     fun enabled(): Boolean = enabled.Bool()
-
-    @JvmStatic
-    fun onNewMessage(): Boolean = onNewMessage.Bool()
-
-    @JvmStatic
-    fun onRecording(): Boolean = onRecording.Bool()
-
-    @JvmStatic
-    fun onCall(): Boolean = onCall.Bool()
 
     @JvmStatic
     fun screenOffOnly(): Boolean = screenOffOnly.Bool()
@@ -80,6 +62,11 @@ object GlyphConfig {
             if (configLoaded && !force) return
             if (ApplicationLoader.applicationContext == null) return
             val preferences = getPreferences()
+            if (retiredKeys.any { preferences.contains(it) }) {
+                val editor = preferences.edit()
+                retiredKeys.forEach { editor.remove(it) }
+                editor.apply()
+            }
             for (item in configs) {
                 try {
                     when (item.type) {

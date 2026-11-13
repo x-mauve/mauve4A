@@ -16,6 +16,9 @@ import org.telegram.ui.Components.BulletinFactory;
 
 import app.exteraless.glyph.GlyphConfig;
 import app.exteraless.glyph.GlyphController;
+import app.exteraless.glyph.GlyphEvent;
+import app.exteraless.glyph.GlyphRule;
+import app.exteraless.glyph.GlyphRules;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 
@@ -51,9 +54,9 @@ public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
 
         glyphHeaderRow = addRow("glyphHeader");
         glyphEnableRow = addRow(GlyphConfig.enabled.getKey());
-        glyphNewMessageRow = addRow(GlyphConfig.onNewMessage.getKey());
-        glyphCallsRow = addRow(GlyphConfig.onCall.getKey());
-        glyphRecordingRow = addRow(GlyphConfig.onRecording.getKey());
+        glyphNewMessageRow = addRow("OEGlyphNewMessage");
+        glyphCallsRow = addRow("OEGlyphCalls");
+        glyphRecordingRow = addRow("OEGlyphRecording");
         glyphScreenOffRow = addRow(GlyphConfig.screenOffOnly.getKey());
         glyphPreviewRow = addRow("glyphPreview");
         glyphDividerRow = addRow();
@@ -102,17 +105,17 @@ public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
                 GlyphController.getInstance().shutdown();
             }
         } else if (position == glyphNewMessageRow) {
-            boolean enabled = GlyphConfig.onNewMessage.toggleConfigBool();
+            boolean enabled = toggleEventRule(GlyphEvent.MESSAGE);
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(enabled);
             }
         } else if (position == glyphCallsRow) {
-            boolean enabled = GlyphConfig.onCall.toggleConfigBool();
+            boolean enabled = toggleEventRule(GlyphEvent.CALL);
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(enabled);
             }
         } else if (position == glyphRecordingRow) {
-            boolean enabled = GlyphConfig.onRecording.toggleConfigBool();
+            boolean enabled = toggleEventRule(GlyphEvent.RECORDING);
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(enabled);
             }
@@ -130,6 +133,12 @@ public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
             }
             GlyphController.getInstance().preview();
         }
+    }
+
+    private static boolean toggleEventRule(GlyphEvent event) {
+        GlyphRule rule = GlyphRules.eventRule(event);
+        GlyphRules.setEventRule(event, new GlyphRule(!rule.enabled, rule.zones));
+        return !rule.enabled;
     }
 
     private class ListAdapter extends BaseListAdapter {
@@ -155,13 +164,13 @@ public class OpenExteraGlyphActivity extends BaseNekoSettingsActivity {
                                 GlyphConfig.enabled(), true);
                     } else if (position == glyphNewMessageRow) {
                         cell.setTextAndCheck(getString(R.string.OEGlyphNewMessage),
-                                GlyphConfig.onNewMessage(), true);
+                                GlyphRules.eventRule(GlyphEvent.MESSAGE).enabled, true);
                     } else if (position == glyphCallsRow) {
                         cell.setTextAndCheck(getString(R.string.OEGlyphCalls),
-                                GlyphConfig.onCall(), true);
+                                GlyphRules.eventRule(GlyphEvent.CALL).enabled, true);
                     } else if (position == glyphRecordingRow) {
                         cell.setTextAndCheck(getString(R.string.OEGlyphRecording),
-                                GlyphConfig.onRecording(), true);
+                                GlyphRules.eventRule(GlyphEvent.RECORDING).enabled, true);
                     } else if (position == glyphScreenOffRow) {
                         cell.setTextAndCheck(getString(R.string.OEGlyphScreenOff),
                                 GlyphConfig.screenOffOnly(), false);
