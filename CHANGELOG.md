@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Glyph:** support for Nothing Phone (4b).
+
+### Fixed
+
+- **Glyph:** the mauve logo on the Glyph Matrix of Phone (3) and Phone (4a) Pro
+  is now larger and sharper, with two separate chevrons, the left one dimmer.
+
 ## [0.2.1] - 2026-11-10
 
 ### Changed
