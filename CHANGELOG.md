@@ -11,8 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Glyph:** support for Nothing Phone (4b).
 
+### Changed
+
+- **Glyph:** every message now flashes the glyphs right away. The 2.5 second
+  pause between flashes is gone.
+- **Glyph:** an incoming call takes the glyphs over from a voice recording
+  and gives them back when it ends.
+
 ### Fixed
 
+- **Glyph:** the glyphs no longer flash for messages that show no notification,
+  such as messages in the chat that is open or with notifications turned off.
 - **Glyph:** the mauve logo on the Glyph Matrix of Phone (3) and Phone (4a) Pro
   is now larger and sharper, with two separate chevrons, the left one dimmer.
 
