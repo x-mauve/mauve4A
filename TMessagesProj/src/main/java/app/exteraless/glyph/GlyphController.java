@@ -48,8 +48,8 @@ public final class GlyphController {
     private boolean recordingActive;
     private boolean callActive;
     private long callDialogId;
-    /** A recording or a call owns the glyphs, so message flashes are skipped. */
-    private boolean glyphBusy;
+    /** The call or recording the glyphs are breathing for, null when there is none. */
+    private GlyphEvent activeEvent;
     private long lastFlashAt;
     private Set<String> lastFlashZones;
 
@@ -97,7 +97,7 @@ public final class GlyphController {
             recordingActive = false;
             callActive = false;
             callDialogId = 0;
-            glyphBusy = false;
+            activeEvent = null;
             lastFlashAt = 0;
             lastFlashZones = null;
         });
@@ -115,10 +115,14 @@ public final class GlyphController {
         }
         handler.post(() -> {
             GlyphEngine local = readyEngine();
-            if (local == null || glyphBusy) {
+            if (local == null) {
                 return;
             }
             if (GlyphConfig.screenOffOnly() && isScreenOn()) {
+                return;
+            }
+            // A call or a recording outranks a message and keeps the glyphs.
+            if (callActive || recordingActive) {
                 return;
             }
             Set<String> zones = resolveZones(GlyphEvent.MESSAGE, dialogId);
@@ -138,7 +142,7 @@ public final class GlyphController {
         }
         handler.post(() -> {
             recordingActive = true;
-            updateGlyphActivity();
+            updateActiveEvent();
         });
     }
 
@@ -147,7 +151,7 @@ public final class GlyphController {
         // flipped in the middle of a recording.
         handler.post(() -> {
             recordingActive = false;
-            updateGlyphActivity();
+            updateActiveEvent();
         });
     }
 
@@ -158,7 +162,7 @@ public final class GlyphController {
         handler.post(() -> {
             callActive = true;
             callDialogId = dialogId;
-            updateGlyphActivity();
+            updateActiveEvent();
         });
     }
 
@@ -167,7 +171,7 @@ public final class GlyphController {
         handler.post(() -> {
             callActive = false;
             callDialogId = 0;
-            updateGlyphActivity();
+            updateActiveEvent();
         });
     }
 
@@ -181,14 +185,19 @@ public final class GlyphController {
         });
     }
 
-    /** Breathing lasts as long as a recording or an incoming call is active. */
-    private void updateGlyphActivity() {
-        boolean active = recordingActive || callActive;
-        if (active == glyphBusy) {
+    /**
+     * Breathing follows the most important ongoing event: a call outranks a
+     * recording. It restarts whenever that event changes, so the zones are
+     * always the ones of the event in charge.
+     */
+    private void updateActiveEvent() {
+        GlyphEvent event = callActive ? GlyphEvent.CALL
+                : recordingActive ? GlyphEvent.RECORDING : null;
+        if (event == activeEvent) {
             return;
         }
-        if (!active) {
-            glyphBusy = false;
+        activeEvent = event;
+        if (event == null) {
             GlyphEngine local = activeEngine();
             if (local != null) {
                 local.stopEffect();
@@ -196,14 +205,10 @@ public final class GlyphController {
             return;
         }
         GlyphEngine local = readyEngine();
-        if (local == null) {
-            return;
+        if (local != null) {
+            long dialogId = event == GlyphEvent.CALL ? callDialogId : 0;
+            local.play(resolveZones(event, dialogId), GlyphEffects.BREATHE);
         }
-        glyphBusy = true;
-        Set<String> zones = callActive
-                ? resolveZones(GlyphEvent.CALL, callDialogId)
-                : resolveZones(GlyphEvent.RECORDING, 0);
-        local.play(zones, GlyphEffects.BREATHE);
     }
 
     /** The engine, initializing it first if the feature is on. Null when glyphs are unavailable. */
