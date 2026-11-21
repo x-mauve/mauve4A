@@ -188,6 +188,8 @@ public class MessagesController extends BaseController implements NotificationCe
     public ArrayList<TLRPC.Dialog> dialogsForBlock = new ArrayList<>();
     public ArrayList<TLRPC.Dialog> dialogsGroupsOnly = new ArrayList<>();
     public DialogFilter[] selectedDialogFilter = new DialogFilter[2];
+    // While the archive shows folder tabs, selected filters list only archived chats.
+    private boolean archiveFilterMode;
     private int dialogsLoadedTillDate = Integer.MAX_VALUE;
     public int unreadUnmutedDialogs;
     public ConcurrentHashMap<Long, Integer> dialogs_read_inbox_max = new ConcurrentHashMap<>(100, 1.0f, 2);
@@ -2546,6 +2548,16 @@ public class MessagesController extends BaseController implements NotificationCe
         } else {
             sortDialogs(null);
         }
+    }
+
+    public void setArchiveFilterMode(boolean enabled) {
+        if (archiveFilterMode == enabled) {
+            return;
+        }
+        archiveFilterMode = enabled;
+        // Slots belong to whichever list is on screen, so drop them on every switch.
+        selectDialogFilter(null, 0);
+        selectDialogFilter(null, 1);
     }
 
     public void onFilterUpdate(DialogFilter filter) {
@@ -23011,6 +23023,9 @@ public class MessagesController extends BaseController implements NotificationCe
                 }
                 for (int a = 0, N = allDialogs.size(); a < N; a++) {
                     final TLRPC.Dialog d = allDialogs.get(a);
+                    if (archiveFilterMode && d.folder_id != 1) {
+                        continue;
+                    }
                     final boolean isCommunity = d instanceof TLRPC.TL_dialogCommunity;
                     if (d instanceof TLRPC.TL_dialog || isCommunity) {
                         long dialogId = d.id;

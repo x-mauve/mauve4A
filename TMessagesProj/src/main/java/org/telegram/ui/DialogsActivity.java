@@ -7420,6 +7420,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         }
         showFiltersHint();
+        if (isArchiveWithFolders()) {
+            getMessagesController().setArchiveFilterMode(true);
+        }
         if (viewPages != null) {
             boolean filtersReselected = false;
             ArrayList<MessagesController.DialogFilter> filters = getMessagesController().getDialogFilters();
@@ -7536,6 +7539,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onPause() {
         super.onPause();
+        if (isArchiveWithFolders()) {
+            // Hand the filter slots back to the main list.
+            getMessagesController().setArchiveFilterMode(false);
+        }
         if (storiesBulletin != null) {
             storiesBulletin.hide();
             storiesBulletin = null;
