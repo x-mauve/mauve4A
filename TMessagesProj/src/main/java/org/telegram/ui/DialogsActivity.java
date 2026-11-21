@@ -3638,7 +3638,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         if (
             (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect || initialDialogsType == DIALOGS_TYPE_FORWARD) &&
-            folderId == 0 && communityId == 0 && TextUtils.isEmpty(searchString)
+            (folderId == 0 || isArchiveWithFolders()) && communityId == 0 && TextUtils.isEmpty(searchString)
         ) {
             filterTabsView = new FilterTabsView(context, resourceProvider) {
                 @Override
@@ -3763,6 +3763,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
                 @Override
                 public int getTabCounter(int tabId) {
+                    // Folder counters cover all chats, so they would be misleading in the archive.
+                    if (folderId != 0) {
+                        return 0;
+                    }
                     if (NaConfig.INSTANCE.getIgnoreUnreadCount().Int() == NekoConfig.DIALOG_FILTER_EXCLUDE_ALL) {
                         return 0;
                     }
@@ -3782,7 +3786,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
                 @Override
                 public boolean didSelectTab(FilterTabsView.TabView tabView, boolean selected) {
-                    if (initialDialogsType != DIALOGS_TYPE_DEFAULT) {
+                    if (initialDialogsType != DIALOGS_TYPE_DEFAULT || folderId != 0) {
                         return false;
                     }
                     if (actionBar.isActionModeShowed() || storiesOverscroll != 0) {
@@ -4214,7 +4218,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         };
 
-        int pagesCount = folderId == 0 && communityId == 0 && (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect || initialDialogsType == DIALOGS_TYPE_FORWARD) ? 2 : 1;
+        int pagesCount = (folderId == 0 || isArchiveWithFolders()) && communityId == 0 && (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect || initialDialogsType == DIALOGS_TYPE_FORWARD) ? 2 : 1;
         viewPages = new ViewPage[pagesCount];
         for (int a = 0; a < pagesCount; a++) {
             final ViewPage viewPage = new ViewPage(context);
@@ -7046,6 +7050,17 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     private boolean startupFolderApplied;
 
+    private boolean isArchiveWithFolders() {
+        return folderId == 1 && communityId == 0 && initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect
+                && AppearanceConfig.archiveFolders();
+    }
+
+    // Folders that skip archived chats make no sense in the archive.
+    private boolean isHiddenInArchive(MessagesController.DialogFilter filter) {
+        return folderId == 1 && !filter.isDefault()
+                && (filter.flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_ARCHIVED) != 0;
+    }
+
     private boolean isMainFolderList() {
         return initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect && folderId == 0 && communityId == 0;
     }
@@ -7069,7 +7084,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             filterOptions = null;
         }
         final ArrayList<MessagesController.DialogFilter> filters = getMessagesController().getDialogFilters();
-        if (filters.size() > 1) {
+        int visibleFiltersCount = 0;
+        for (int a = 0, N = filters.size(); a < N; a++) {
+            if (!isHiddenInArchive(filters.get(a))) {
+                visibleFiltersCount++;
+            }
+        }
+        if (visibleFiltersCount > 1) {
             if (force || filterTabsView.getVisibility() != View.VISIBLE) {
                 boolean animatedUpdateItems = animated;
                 if (filterTabsView.getVisibility() != View.VISIBLE) {
@@ -7087,6 +7108,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 }
                 filterTabsView.removeTabs();
                 for (int a = 0, N = filters.size(); a < N; a++) {
+                    if (isHiddenInArchive(filters.get(a))) {
+                        continue;
+                    }
                     if (filters.get(a).isDefault()) {
                         if (filterTabsView.showAllChatsTab) filterTabsView.addTab(a, 0, LocaleController.getString(R.string.FilterAllChats), filters.get(a).emoticon, null, false, true, filters.get(a).locked);
                     } else {
@@ -7127,6 +7151,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 for (int a = 0; a < viewPages.length; a++) {
                     if (viewPages[a].selectedType >= filters.size()) {
                         viewPages[a].selectedType = filters.size() - 1;
+                    }
+                    if (viewPages[a].selectedType >= 0 && isHiddenInArchive(filters.get(viewPages[a].selectedType))) {
+                        viewPages[a].selectedType = filterTabsView.getDefaultTabId();
+                        updateCurrentTab = true;
                     }
                     viewPages[a].listView.setScrollingTouchSlop(RecyclerView.TOUCH_SLOP_PAGING);
                 }
