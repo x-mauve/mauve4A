@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Folders:** an opt-in setting in Appearance shows your chat folders as tabs
+  in the archive. Each tab lists only the archived chats that match the folder,
+  and folders that exclude archived chats are hidden there.
+
 ## [0.3.0] - 2026-11-22
 
 ### Added
