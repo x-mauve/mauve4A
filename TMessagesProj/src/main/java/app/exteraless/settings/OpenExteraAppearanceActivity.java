@@ -138,6 +138,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int tabTitleStyleRow;
     private int startupFolderRow;
     private int tabCounterRow;
+    private int archiveFoldersRow;
     private int foldersDividerRow;
 
     // Links
@@ -196,6 +197,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         tabTitleStyleRow = addRow("tabTitleStyle");
         startupFolderRow = getMessagesController().getDialogFilters().size() > 1 ? addRow("startupFolder") : -1;
         tabCounterRow = addRow("tabCounter");
+        archiveFoldersRow = addRow("archiveFolders");
         foldersDividerRow = addRow();
 
         // Порядок как в 12.9.0: строки-переходы идут сразу после «Chat Folders»,
@@ -852,6 +854,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             rebuild = true;
         } else if (position == senderMiniAvatarsRow) {
             item = AppearanceConfig.senderMiniAvatars;
+        } else if (position == archiveFoldersRow) {
+            item = AppearanceConfig.archiveFolders;
         }
 
         if (item == null) {
@@ -995,6 +999,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceSingleCornerRadius), AppearanceConfig.singleCornerRadius.Bool(), false);
                     } else if (position == forceSnowRow) {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceForceSnow), getString(R.string.OEAppearanceForceSnowInfo), NekoConfig.actionBarDecoration.Int() == 1, true, true);
+                    } else if (position == archiveFoldersRow) {
+                        cell.setTextAndCheck(getString(R.string.OEAppearanceArchiveFolders), AppearanceConfig.archiveFolders.Bool(), false);
                     } else if (position == senderMiniAvatarsRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceSenderMiniAvatars), AppearanceConfig.senderMiniAvatars.Bool(), false);
                     }
@@ -1078,7 +1084,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         String[] v = {getString(R.string.OEAppearanceTabCounterAll),
                                 getString(R.string.OEAppearanceTabCounterUnmuted),
                                 getString(R.string.OEAppearanceTabCounterOff)};
-                        cell.setTextAndValue(getString(R.string.OEAppearanceTabCounter), v[clamp(NaConfig.INSTANCE.getIgnoreUnreadCount().Int(), v.length)], false);
+                        cell.setTextAndValue(getString(R.string.OEAppearanceTabCounter), v[clamp(NaConfig.INSTANCE.getIgnoreUnreadCount().Int(), v.length)], true);
                     } else if (position == titleTextRow) {
                         CharSequence[] v = titleTextOptions();
                         int titleText = clamp(AppearanceConfig.titleText.Int(), v.length);

@@ -332,6 +332,7 @@ public final class EtgBackup {
         bool(list, "hideFloatingButton", NaConfig.INSTANCE.getDisableDialogsFloatingButton());
         bool(list, "hideDialogsSearchBar", NaConfig.INSTANCE.getHideDialogsSearchField());
         bool(list, "senderMiniAvatars", AppearanceConfig.senderMiniAvatars);
+        bool(list, "archiveFolders", AppearanceConfig.archiveFolders);
         bool(list, "hideAllChats", NekoConfig.hideAllTab);
         bool(list, "squareFab", AppearanceConfig.squareFab);
         bool(list, "sectionsSeparatedHeaders", AppearanceConfig.separateHeaders);

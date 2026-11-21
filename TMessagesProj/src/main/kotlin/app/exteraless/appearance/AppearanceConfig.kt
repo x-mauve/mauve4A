@@ -65,6 +65,11 @@ object AppearanceConfig {
     val senderMiniAvatars =
         addConfig("OEAppearanceSenderMiniAvatars", ConfigItem.configTypeBool, true)
 
+    /** Show the chat folder tabs in the archive. */
+    @JvmField
+    val archiveFolders =
+        addConfig("OEAppearanceArchiveFolders", ConfigItem.configTypeBool, false)
+
     /** Прятать эмодзи-статус рядом с заголовком шапки. Дефолт false, как в exteraGram. */
     @JvmField
     val hideActionBarStatus =
@@ -510,6 +515,12 @@ object AppearanceConfig {
     fun singleCornerRadius(): Boolean {
         ensureLoaded()
         return singleCornerRadius.Bool()
+    }
+
+    @JvmStatic
+    fun archiveFolders(): Boolean {
+        ensureLoaded()
+        return archiveFolders.Bool()
     }
 
     @JvmStatic

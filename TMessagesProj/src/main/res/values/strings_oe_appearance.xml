@@ -39,6 +39,7 @@
     <string name="OEAppearanceTabTitleStyleIconsOnly">Icons only</string>
     <string name="OEAppearanceTabTitleStyleTextWithIcons">Names with Icons</string>
     <string name="OEAppearanceTabCounter">Notification Counter</string>
+    <string name="OEAppearanceArchiveFolders">Folders in Archive</string>
     <string name="OEAppearanceHideAllChats">Hide \"%1$s\" Tab</string>
     <string name="OEAppearanceFoldersInfo">Icons are synchronized with your account.</string>
 
