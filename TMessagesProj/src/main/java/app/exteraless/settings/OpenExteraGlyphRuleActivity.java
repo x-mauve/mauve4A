@@ -207,7 +207,7 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         } else if (position == previewRow) {
             // A chat rule is previewed as a message, its most common use.
             GlyphController.getInstance().preview(storedZones(),
-                    event != null ? event : GlyphEvent.MESSAGE);
+                    event != null ? event : GlyphEvent.MESSAGE, null);
         } else if (position == deleteRow) {
             GlyphRules.removeChatRule(dialogId);
             finishFragment();

@@ -40,8 +40,8 @@ public final class GlyphController {
      */
     private static final long RETRIGGER_GUARD_MS = 300L;
 
-    /** How long a preview of a call or recording rule keeps breathing. */
-    private static final long PREVIEW_BREATHE_MS = 3000L;
+    /** How long a preview of a lasting animation keeps running. */
+    private static final long PREVIEW_LASTING_MS = 3000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -51,7 +51,7 @@ public final class GlyphController {
     private boolean recordingActive;
     private boolean callActive;
     private long callDialogId;
-    /** The call or recording the glyphs are breathing for, null when there is none. */
+    /** The call or recording the glyphs are lit for, null when there is none. */
     private GlyphEvent activeEvent;
     private long lastFlashAt;
     private Set<String> lastFlashZones;
@@ -140,7 +140,8 @@ public final class GlyphController {
             if (callActive || recordingActive) {
                 return;
             }
-            Set<String> zones = resolveZones(GlyphEvent.MESSAGE, dialogId);
+            GlyphRule rule = GlyphRules.resolve(GlyphEvent.MESSAGE, dialogId);
+            Set<String> zones = zonesOf(rule);
             if (zones == null) {
                 return;
             }
@@ -150,9 +151,9 @@ public final class GlyphController {
             }
             lastFlashAt = now;
             lastFlashZones = zones;
-            // A preview that is still breathing must not cut this flash short.
+            // A preview that is still running must not cut this flash short.
             handler.removeCallbacks(previewStopRunnable);
-            local.play(zones, GlyphEffects.PULSE);
+            local.play(zones, rule.messageAnimationOrDefault().effect());
         });
     }
 
@@ -205,11 +206,11 @@ public final class GlyphController {
 
     /**
      * Plays a rule from the settings the way {@code event} would show it. An
-     * empty set stands for every zone. The screen-off mode, the retrigger
-     * guard and the rule's own switch do not apply, but a real call or
-     * recording keeps the glyphs.
+     * empty set stands for every zone, a null animation for the event default.
+     * The screen-off mode, the retrigger guard and the rule's own switch do not
+     * apply, but a real call or recording keeps the glyphs.
      */
-    public void preview(Set<String> zones, GlyphEvent event) {
+    public void preview(Set<String> zones, GlyphEvent event, GlyphAnimation animation) {
         handler.post(() -> {
             if (callActive || recordingActive) {
                 return;
@@ -220,19 +221,18 @@ public final class GlyphController {
             }
             handler.removeCallbacks(previewStopRunnable);
             Set<String> target = zones == null || zones.isEmpty() ? allZones() : zones;
-            if (event == GlyphEvent.MESSAGE) {
-                local.play(target, GlyphEffects.PULSE);
-            } else {
-                local.play(target, GlyphEffects.BREATHE);
-                handler.postDelayed(previewStopRunnable, PREVIEW_BREATHE_MS);
+            GlyphAnimation shown = animation != null ? animation : defaultAnimation(event);
+            local.play(target, shown.effect());
+            if (shown.lasting) {
+                handler.postDelayed(previewStopRunnable, PREVIEW_LASTING_MS);
             }
         });
     }
 
     /**
-     * Breathing follows the most important ongoing event: a call outranks a
-     * recording. It restarts whenever that event changes, so the zones are
-     * always the ones of the event in charge.
+     * The animation follows the most important ongoing event: a call outranks a
+     * recording. It restarts whenever that event changes, so the zones and the
+     * animation are always the ones of the event in charge.
      */
     private void updateActiveEvent() {
         GlyphEvent event = callActive ? GlyphEvent.CALL
@@ -252,8 +252,10 @@ public final class GlyphController {
         GlyphEngine local = readyEngine();
         if (local != null) {
             long dialogId = event == GlyphEvent.CALL ? callDialogId : 0;
-            Set<String> zones = resolveZones(event, dialogId);
-            local.play(zones != null ? zones : allZones(), GlyphEffects.BREATHE);
+            GlyphRule rule = GlyphRules.resolve(event, dialogId);
+            Set<String> zones = zonesOf(rule);
+            local.play(zones != null ? zones : allZones(),
+                    rule.lastingAnimationOrDefault().effect());
         }
     }
 
@@ -270,16 +272,18 @@ public final class GlyphController {
         return initialized ? engine : null;
     }
 
-    /**
-     * Zones to light for an event, or null when its rule is turned off.
-     * {@code dialogId} is 0 when the event has no chat.
-     */
-    private Set<String> resolveZones(GlyphEvent event, long dialogId) {
-        GlyphRule rule = GlyphRules.resolve(event, dialogId);
+    /** Zones to light for a rule, or null when the rule is turned off. */
+    private Set<String> zonesOf(GlyphRule rule) {
         if (!rule.enabled) {
             return null;
         }
         return rule.zones.isEmpty() ? allZones() : rule.zones;
+    }
+
+    private static GlyphAnimation defaultAnimation(GlyphEvent event) {
+        return event == GlyphEvent.MESSAGE
+                ? GlyphAnimation.DEFAULT_ONE_SHOT
+                : GlyphAnimation.DEFAULT_LASTING;
     }
 
     private static Set<String> allZones() {
