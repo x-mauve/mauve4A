@@ -14,6 +14,15 @@
     <string name="OEGlyphRuleAll">Все глифы</string>
     <string name="OEGlyphRuleEnabled">Включено</string>
     <string name="OEGlyphRuleGlyphs">Глифы</string>
+    <string name="OEGlyphRuleAnimation">Анимация</string>
+    <string name="OEGlyphRuleMessageAnimation">Анимация сообщений</string>
+    <string name="OEGlyphRuleCallAnimation">Анимация звонков</string>
+    <string name="OEGlyphAnimationPulse">Пульс</string>
+    <string name="OEGlyphAnimationBlink">Мигание</string>
+    <string name="OEGlyphAnimationHeartbeat">Сердцебиение</string>
+    <string name="OEGlyphAnimationFade">Затухание</string>
+    <string name="OEGlyphAnimationBreathe">Дыхание</string>
+    <string name="OEGlyphAnimationSolid">Ровный свет</string>
     <string name="OEGlyphZone">Глиф %s</string>
     <string name="OEGlyphRuleLastZone">Должен остаться выбранным хотя бы один глиф. Чтобы глифы не загорались, выключите правило.</string>
     <string name="OEGlyphRuleDelete">Удалить правило</string>

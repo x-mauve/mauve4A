@@ -15,6 +15,15 @@
     <string name="OEGlyphRuleAll">All glyphs</string>
     <string name="OEGlyphRuleEnabled">Enabled</string>
     <string name="OEGlyphRuleGlyphs">Glyphs</string>
+    <string name="OEGlyphRuleAnimation">Animation</string>
+    <string name="OEGlyphRuleMessageAnimation">Message animation</string>
+    <string name="OEGlyphRuleCallAnimation">Call animation</string>
+    <string name="OEGlyphAnimationPulse">Pulse</string>
+    <string name="OEGlyphAnimationBlink">Blink</string>
+    <string name="OEGlyphAnimationHeartbeat">Heartbeat</string>
+    <string name="OEGlyphAnimationFade">Fade</string>
+    <string name="OEGlyphAnimationBreathe">Breathe</string>
+    <string name="OEGlyphAnimationSolid">Solid</string>
     <string name="OEGlyphZone">Glyph %s</string>
     <string name="OEGlyphRuleLastZone">At least one glyph has to stay selected. Turn the rule off to keep the glyphs dark.</string>
     <string name="OEGlyphRuleDelete">Delete rule</string>

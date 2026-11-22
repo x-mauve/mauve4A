@@ -19,12 +19,14 @@ import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextCheckbox2Cell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
+import org.telegram.ui.Cells.TextRadioCell;
 import org.telegram.ui.Components.BulletinFactory;
 
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import app.exteraless.glyph.GlyphAnimation;
 import app.exteraless.glyph.GlyphConfig;
 import app.exteraless.glyph.GlyphController;
 import app.exteraless.glyph.GlyphDevice;
@@ -50,11 +52,22 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
     private final Set<String> checkedZones = new LinkedHashSet<>();
     private List<GlyphZone> zones;
 
+    /** Animations picked on screen. Only the ones matching the rule type are shown and saved. */
+    private GlyphAnimation messageAnimation;
+    private GlyphAnimation lastingAnimation;
+
     private int enabledRow;
     private int zonesDividerRow;
     private int zonesHeaderRow;
     private int zonesStartRow;
     private int zonesEndRow;
+    private int animationsDividerRow;
+    private int messageAnimationHeaderRow;
+    private int messageAnimationStartRow;
+    private int messageAnimationEndRow;
+    private int lastingAnimationHeaderRow;
+    private int lastingAnimationStartRow;
+    private int lastingAnimationEndRow;
     private int actionsDividerRow;
     private int previewRow;
     private int deleteRow;
@@ -126,6 +139,8 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
 
         zones = GlyphDevice.current().zones;
         ruleEnabled = rule.enabled;
+        messageAnimation = rule.messageAnimationOrDefault();
+        lastingAnimation = rule.lastingAnimationOrDefault();
         // Ids from another phone model can arrive with a settings backup.
         for (GlyphZone zone : zones) {
             if (rule.zones.contains(zone.id)) {
@@ -151,6 +166,23 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
             zonesEndRow = rowCount;
         } else {
             zonesDividerRow = zonesHeaderRow = zonesStartRow = zonesEndRow = -1;
+        }
+        animationsDividerRow = addRow();
+        if (showsMessageAnimation()) {
+            messageAnimationHeaderRow = addRow();
+            messageAnimationStartRow = rowCount;
+            rowCount += GlyphAnimation.oneShot().size();
+            messageAnimationEndRow = rowCount;
+        } else {
+            messageAnimationHeaderRow = messageAnimationStartRow = messageAnimationEndRow = -1;
+        }
+        if (showsLastingAnimation()) {
+            lastingAnimationHeaderRow = addRow();
+            lastingAnimationStartRow = rowCount;
+            rowCount += GlyphAnimation.lasting().size();
+            lastingAnimationEndRow = rowCount;
+        } else {
+            lastingAnimationHeaderRow = lastingAnimationStartRow = lastingAnimationEndRow = -1;
         }
         actionsDividerRow = addRow();
         previewRow = addRow();
@@ -204,10 +236,22 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                 ((TextCheckbox2Cell) view).setChecked(checkedZones.contains(id));
             }
             save();
+        } else if (position >= messageAnimationStartRow && position < messageAnimationEndRow) {
+            messageAnimation = GlyphAnimation.oneShot().get(position - messageAnimationStartRow);
+            listAdapter.notifyItemRangeChanged(messageAnimationStartRow,
+                    messageAnimationEndRow - messageAnimationStartRow);
+            save();
+        } else if (position >= lastingAnimationStartRow && position < lastingAnimationEndRow) {
+            lastingAnimation = GlyphAnimation.lasting().get(position - lastingAnimationStartRow);
+            listAdapter.notifyItemRangeChanged(lastingAnimationStartRow,
+                    lastingAnimationEndRow - lastingAnimationStartRow);
+            save();
         } else if (position == previewRow) {
             // A chat rule is previewed as a message, its most common use.
+            GlyphAnimation animation = event == null || event == GlyphEvent.MESSAGE
+                    ? messageAnimation : lastingAnimation;
             GlyphController.getInstance().preview(storedZones(),
-                    event != null ? event : GlyphEvent.MESSAGE, null);
+                    event != null ? event : GlyphEvent.MESSAGE, animation);
         } else if (position == deleteRow) {
             GlyphRules.removeChatRule(dialogId);
             finishFragment();
@@ -217,6 +261,33 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
     private void checkAllZones() {
         for (GlyphZone zone : zones) {
             checkedZones.add(zone.id);
+        }
+    }
+
+    /** Chat rules cover messages and calls, event rules only their own event. */
+    private boolean showsMessageAnimation() {
+        return event == null || event == GlyphEvent.MESSAGE;
+    }
+
+    private boolean showsLastingAnimation() {
+        return event != GlyphEvent.MESSAGE;
+    }
+
+    private static int animationName(GlyphAnimation animation) {
+        switch (animation) {
+            case BLINK:
+                return R.string.OEGlyphAnimationBlink;
+            case HEARTBEAT:
+                return R.string.OEGlyphAnimationHeartbeat;
+            case FADE:
+                return R.string.OEGlyphAnimationFade;
+            case BREATHE:
+                return R.string.OEGlyphAnimationBreathe;
+            case SOLID:
+                return R.string.OEGlyphAnimationSolid;
+            case PULSE:
+            default:
+                return R.string.OEGlyphAnimationPulse;
         }
     }
 
@@ -234,7 +305,14 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
     }
 
     private void save() {
-        GlyphRule rule = new GlyphRule(ruleEnabled, storedZones());
+        GlyphRule rule;
+        if (event == null) {
+            rule = new GlyphRule(ruleEnabled, storedZones(), messageAnimation, lastingAnimation);
+        } else if (event == GlyphEvent.MESSAGE) {
+            rule = new GlyphRule(ruleEnabled, storedZones(), messageAnimation, null);
+        } else {
+            rule = new GlyphRule(ruleEnabled, storedZones(), null, lastingAnimation);
+        }
         if (event != null) {
             GlyphRules.setEventRule(event, rule);
         } else {
@@ -261,7 +339,15 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
             switch (holder.getItemViewType()) {
                 case TYPE_HEADER: {
                     HeaderCell cell = (HeaderCell) holder.itemView;
-                    cell.setText(getString(R.string.OEGlyphRuleGlyphs));
+                    if (position == zonesHeaderRow) {
+                        cell.setText(getString(R.string.OEGlyphRuleGlyphs));
+                    } else if (position == messageAnimationHeaderRow) {
+                        cell.setText(getString(event == null
+                                ? R.string.OEGlyphRuleMessageAnimation : R.string.OEGlyphRuleAnimation));
+                    } else if (position == lastingAnimationHeaderRow) {
+                        cell.setText(getString(event == null
+                                ? R.string.OEGlyphRuleCallAnimation : R.string.OEGlyphRuleAnimation));
+                    }
                     break;
                 }
                 case TYPE_CHECK: {
@@ -274,6 +360,21 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                     GlyphZone zone = zones.get(position - zonesStartRow);
                     cell.setTextAndCheck(formatString(R.string.OEGlyphZone, zone.label),
                             checkedZones.contains(zone.id), position + 1 < zonesEndRow);
+                    break;
+                }
+                case TYPE_RADIO: {
+                    TextRadioCell cell = (TextRadioCell) holder.itemView;
+                    if (position < messageAnimationEndRow) {
+                        GlyphAnimation animation =
+                                GlyphAnimation.oneShot().get(position - messageAnimationStartRow);
+                        cell.setTextAndCheck(getString(animationName(animation)),
+                                animation == messageAnimation, position + 1 < messageAnimationEndRow);
+                    } else {
+                        GlyphAnimation animation =
+                                GlyphAnimation.lasting().get(position - lastingAnimationStartRow);
+                        cell.setTextAndCheck(getString(animationName(animation)),
+                                animation == lastingAnimation, position + 1 < lastingAnimationEndRow);
+                    }
                     break;
                 }
                 case TYPE_TEXT: {
@@ -307,10 +408,15 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         public int getItemViewType(int position) {
             if (position == enabledRow) {
                 return TYPE_CHECK;
-            } else if (position == zonesHeaderRow) {
+            } else if (position == zonesHeaderRow || position == messageAnimationHeaderRow
+                    || position == lastingAnimationHeaderRow) {
                 return TYPE_HEADER;
             } else if (position >= zonesStartRow && position < zonesEndRow) {
                 return TYPE_CHECKBOX;
+            } else if (position >= messageAnimationStartRow && position < messageAnimationEndRow) {
+                return TYPE_RADIO;
+            } else if (position >= lastingAnimationStartRow && position < lastingAnimationEndRow) {
+                return TYPE_RADIO;
             } else if (position == previewRow || position == deleteRow) {
                 return TYPE_TEXT;
             } else if (position == infoRow) {
