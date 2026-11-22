@@ -7,15 +7,16 @@ import tw.nekomimi.nekogram.NekoConfig
 import tw.nekomimi.nekogram.config.ConfigItem
 
 /**
- * Настройки интеграции с Nothing Glyph (подсветка задней панели Nothing Phone).
- *
- * Схема повторяет [app.exteraless.OpenExteraConfig]: те же SharedPreferences,
- * тот же [ConfigItem]. Ключи с префиксом OEGlyph.
+ * Settings of the Nothing Glyph integration. Stored like
+ * [app.exteraless.OpenExteraConfig]: same SharedPreferences, same [ConfigItem].
  */
 object GlyphConfig {
 
     private val sync = Any()
     private val configs = ArrayList<ConfigItem>()
+
+    /** Per-event toggles that the rules replaced. */
+    private val retiredKeys = arrayOf("OEGlyphNewMessage", "OEGlyphCalls", "OEGlyphRecording")
 
     @JvmStatic
     fun getConfigTypes(): Map<String, Int> = configs.associate { it.key to it.type }
@@ -26,37 +27,20 @@ object GlyphConfig {
     @JvmStatic
     fun getPreferences(): SharedPreferences = NekoConfig.getPreferences()
 
-    /** Мастер-переключатель: без него контроллер не биндится к системному сервису глифов. */
+    /** Master switch. While it is off the controller never binds to the glyph service. */
     @JvmField
     val enabled = addConfig("OEGlyphEnabled", ConfigItem.configTypeBool, false)
 
-    /** Вспышка глифов на входящее сообщение. */
-    @JvmField
-    val onNewMessage = addConfig("OEGlyphNewMessage", ConfigItem.configTypeBool, true)
-
-    /** «Дыхание» глифов, пока идёт запись голосового. */
-    @JvmField
-    val onRecording = addConfig("OEGlyphRecording", ConfigItem.configTypeBool, true)
-
-    /** «Дыхание» глифов, пока звонит входящий VoIP-звонок. */
-    @JvmField
-    val onCall = addConfig("OEGlyphCalls", ConfigItem.configTypeBool, true)
-
-    /** Реагировать на сообщения только при выключенном экране. */
+    /** React to messages only while the screen is off. */
     @JvmField
     val screenOffOnly = addConfig("OEGlyphScreenOff", ConfigItem.configTypeBool, false)
 
+    /** The rule set as JSON, parsed and written by [GlyphRules]. */
+    @JvmField
+    val rules = addConfig("OEGlyphRules", ConfigItem.configTypeString, "")
+
     @JvmStatic
     fun enabled(): Boolean = enabled.Bool()
-
-    @JvmStatic
-    fun onNewMessage(): Boolean = onNewMessage.Bool()
-
-    @JvmStatic
-    fun onRecording(): Boolean = onRecording.Bool()
-
-    @JvmStatic
-    fun onCall(): Boolean = onCall.Bool()
 
     @JvmStatic
     fun screenOffOnly(): Boolean = screenOffOnly.Bool()
@@ -78,16 +62,25 @@ object GlyphConfig {
             if (configLoaded && !force) return
             if (ApplicationLoader.applicationContext == null) return
             val preferences = getPreferences()
+            if (retiredKeys.any { preferences.contains(it) }) {
+                val editor = preferences.edit()
+                retiredKeys.forEach { editor.remove(it) }
+                editor.apply()
+            }
             for (item in configs) {
                 try {
                     when (item.type) {
                         ConfigItem.configTypeBool ->
                             item.value = preferences.getBoolean(item.key, item.defaultValue as Boolean)
+                        ConfigItem.configTypeString ->
+                            item.value = preferences.getString(item.key, item.defaultValue as String)
+                                ?: item.defaultValue
                     }
                 } catch (e: Exception) {
                     FileLog.e(e)
                 }
             }
+            GlyphRules.load(rules.String())
             configLoaded = true
         }
     }

@@ -2,11 +2,22 @@
 <resources>
     <string name="OEGlyphTitle">Nothing Glyph</string>
     <string name="OEGlyphEnable">Glyph Interface</string>
-    <string name="OEGlyphNewMessage">Вспышка при новых сообщениях</string>
-    <string name="OEGlyphCalls">Свечение при входящем звонке</string>
-    <string name="OEGlyphRecording">Свечение при записи голосовых</string>
     <string name="OEGlyphScreenOff">Сообщения только при выключенном экране</string>
     <string name="OEGlyphPreview">Предпросмотр</string>
-    <string name="OEGlyphUnsupported">Glyph Interface доступен только на Nothing Phone</string>
-    <string name="OEGlyphInfo">Подсветка задней панели Nothing Phone: вспышка на входящие сообщения, логотип mauve на Glyph Matrix Phone (3) и «дыхание» во время записи голосовых или входящего звонка. Заглушённые чаты вспышку не вызывают.</string>
+    <string name="OEGlyphEvents">События</string>
+    <string name="OEGlyphEventMessage">Новые сообщения</string>
+    <string name="OEGlyphEventCall">Входящие звонки</string>
+    <string name="OEGlyphEventRecording">Запись голосовых</string>
+    <string name="OEGlyphChats">Чаты</string>
+    <string name="OEGlyphAddChat">Добавить чат</string>
+    <string name="OEGlyphRuleOff">Выкл.</string>
+    <string name="OEGlyphRuleAll">Все глифы</string>
+    <string name="OEGlyphRuleEnabled">Включено</string>
+    <string name="OEGlyphRuleGlyphs">Глифы</string>
+    <string name="OEGlyphZone">Глиф %s</string>
+    <string name="OEGlyphRuleLastZone">Должен остаться выбранным хотя бы один глиф. Чтобы глифы не загорались, выключите правило.</string>
+    <string name="OEGlyphRuleDelete">Удалить правило</string>
+    <string name="OEGlyphRuleInfoEvent">Чаты с собственным правилом это правило не используют.</string>
+    <string name="OEGlyphRuleInfoChat">Это правило заменяет правила событий для сообщений и звонков из этого чата на всех аккаунтах.</string>
+    <string name="OEGlyphInfo">Подсветка задней панели Nothing Phone. Выберите, какие глифы вспыхивают при новых сообщениях и какие светятся при входящем звонке и записи голосовых, и задайте отдельные правила для нужных чатов. Заглушённые чаты вспышку не вызывают. На Phone (3) и Phone (4a) Pro вместо этого на Glyph Matrix показывается логотип mauve, выбор глифов там недоступен.</string>
 </resources>

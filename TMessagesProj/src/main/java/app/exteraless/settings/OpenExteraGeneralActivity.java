@@ -149,7 +149,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private int notificationBubblesRow;
     private int pushStatusRow;
     private int batteryOptimizationRow;
-    private int glyphRow;
     private int notificationsDividerRow;
 
     /** Момент «пять минут назад» для живого примера в строке Relative Last Seen. */
@@ -237,7 +236,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         notificationBubblesRow = addRow("disableNotificationBubbles");
         pushStatusRow = addRow("pushStatus");
         batteryOptimizationRow = addRow("batteryOptimization");
-        glyphRow = Build.MANUFACTURER.equalsIgnoreCase("Nothing") ? addRow("glyph") : -1;
         notificationsDividerRow = addRow();
     }
 
@@ -360,11 +358,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         }
         if (position == translatorRow) {
             presentFragment(new NekoTranslatorSettingsActivity());
-            return;
-        }
-
-        if (position == glyphRow) {
-            presentFragment(new OpenExteraGlyphActivity());
             return;
         }
 
@@ -1068,8 +1061,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                     TextSettingsCell cell = (TextSettingsCell) holder.itemView;
                     if (position == translatorRow) {
                         cell.setText(getString(R.string.TranslatorSettings), true);
-                    } else if (position == glyphRow) {
-                        cell.setText(getString(R.string.OEGlyphTitle), false);
                     } else if (position == pushStatusRow) {
                         cell.setTextAndValue(getString(R.string.OEGeneralPushStatus),
                                 formatPushStatus(), true);
@@ -1077,7 +1068,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndValue(getString(R.string.OEGeneralBatteryOptimization),
                                 getString(batteryUnrestricted()
                                         ? R.string.OEGeneralBatteryOptimizationOff
-                                        : R.string.OEGeneralBatteryOptimizationOn), glyphRow != -1);
+                                        : R.string.OEGeneralBatteryOptimizationOn), false);
                     } else if (position == savePathRow) {
                         String path = NekoConfig.customSavePath.String();
                         cell.setTextAndValue(getString(R.string.OEGeneralSavePath),
@@ -1177,7 +1168,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                     || position == pushStatusRow || position == batteryOptimizationRow
                     || position == savePathRow
                     || position == showIdAndDcRow
-                    || position == translatorRow || position == glyphRow) {
+                    || position == translatorRow) {
                 return TYPE_SETTINGS;
             }
             return TYPE_CHECK;

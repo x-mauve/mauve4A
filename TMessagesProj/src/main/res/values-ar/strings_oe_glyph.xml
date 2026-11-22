@@ -2,11 +2,22 @@
 <resources>
     <string name="OEGlyphTitle">Nothing Glyph</string>
     <string name="OEGlyphEnable">واجهة Glyph</string>
-    <string name="OEGlyphNewMessage">وميض عند الرسائل الجديدة</string>
-    <string name="OEGlyphCalls">توهج عند المكالمات الواردة</string>
-    <string name="OEGlyphRecording">توهج أثناء التسجيل</string>
     <string name="OEGlyphScreenOff">الرسائل فقط عندما تكون الشاشة مطفأة</string>
     <string name="OEGlyphPreview">معاينة</string>
-    <string name="OEGlyphUnsupported">واجهة Glyph متاحة فقط على هواتف Nothing</string>
-    <string name="OEGlyphInfo">تُضيء واجهة Glyph على ظهر هاتف Nothing: وميض للرسائل الواردة، وشعار mauve على Glyph Matrix في Phone (3)، وتوهج متنفّس أثناء تسجيل الرسائل الصوتية أو استقبال مكالمة. المحادثات المكتومة لا تُطلق الوميض أبدًا.</string>
+    <string name="OEGlyphEvents">الأحداث</string>
+    <string name="OEGlyphEventMessage">الرسائل الجديدة</string>
+    <string name="OEGlyphEventCall">المكالمات الواردة</string>
+    <string name="OEGlyphEventRecording">التسجيل الصوتي</string>
+    <string name="OEGlyphChats">المحادثات</string>
+    <string name="OEGlyphAddChat">إضافة محادثة</string>
+    <string name="OEGlyphRuleOff">متوقف</string>
+    <string name="OEGlyphRuleAll">كل الأضواء</string>
+    <string name="OEGlyphRuleEnabled">مفعّل</string>
+    <string name="OEGlyphRuleGlyphs">الأضواء</string>
+    <string name="OEGlyphZone">Glyph %s</string>
+    <string name="OEGlyphRuleLastZone">يجب أن يبقى ضوء واحد على الأقل محددًا. أوقف القاعدة لإبقاء الأضواء مطفأة.</string>
+    <string name="OEGlyphRuleDelete">حذف القاعدة</string>
+    <string name="OEGlyphRuleInfoEvent">المحادثات التي لها قاعدة خاصة تتجاهل هذه القاعدة.</string>
+    <string name="OEGlyphRuleInfoChat">تحل هذه القاعدة محل قواعد الأحداث للرسائل والمكالمات من هذه المحادثة في جميع الحسابات.</string>
+    <string name="OEGlyphInfo">تُضيء الأضواء على ظهر هاتف Nothing. اختر الأضواء التي تومض عند الرسائل الجديدة والتي تتوهج عند المكالمات الواردة والتسجيل الصوتي، وخصّص قاعدة لمحادثات بعينها. المحادثات المكتومة لا تُطلق الوميض أبدًا. في Phone (3) و Phone (4a) Pro يظهر شعار mauve على Glyph Matrix بدلًا من ذلك، ولا يمكن اختيار الأضواء.</string>
 </resources>

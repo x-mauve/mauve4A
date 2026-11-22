@@ -54,6 +54,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import app.exteraless.glyph.GlyphController;
+import app.exteraless.settings.OpenExteraGlyphActivity;
 import kotlin.Unit;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.config.CellGroup;
@@ -115,6 +117,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     private final AbstractConfigCell localPremiumRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.localPremium));
     private final AbstractConfigCell unlimitedPinnedDialogsRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.unlimitedPinnedDialogs, getString(R.string.UnlimitedPinnedDialogsAbout)));
     private final AbstractConfigCell unlimitedFavedStickersRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.unlimitedFavedStickers, getString(R.string.UnlimitedFavoredStickersAbout)));
+    private final AbstractConfigCell glyphRow = cellGroup.appendCell(new ConfigCellText("OEGlyphTitle", () -> presentFragment(new OpenExteraGlyphActivity())));
     private final AbstractConfigCell dividerGeneral = cellGroup.appendCell(new ConfigCellDivider());
 
     // Playback
@@ -212,6 +215,9 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
         }
         if (NaConfig.INSTANCE.getBackAnimationStyle().Int() != ActionBarLayout.BACK_ANIMATION_SPRING) {
             cellGroup.rows.remove(springAnimationCrossfadeRow);
+        }
+        if (!GlyphController.getInstance().isSupported()) {
+            cellGroup.rows.remove(glyphRow);
         }
         checkStoriesRows();
         checkUseDeletedIconRows();
