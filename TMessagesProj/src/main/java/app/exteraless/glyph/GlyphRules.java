@@ -150,7 +150,9 @@ public final class GlyphRules {
                 }
             }
         }
-        return new GlyphRule(json.optBoolean("on", true), zones);
+        return new GlyphRule(json.optBoolean("on", true), zones,
+                GlyphAnimation.fromId(json.optString("msgAnim", "")),
+                GlyphAnimation.fromId(json.optString("longAnim", "")));
     }
 
     private static String serialize(Snapshot local) {
@@ -175,9 +177,17 @@ public final class GlyphRules {
     }
 
     private static JSONObject serializeRule(GlyphRule rule) throws Exception {
-        return new JSONObject()
+        JSONObject json = new JSONObject()
                 .put("on", rule.enabled)
                 .put("zones", new JSONArray(rule.zones));
+        // Unset animations are left out, so rules saved before animations existed read the same.
+        if (rule.messageAnimation != null) {
+            json.put("msgAnim", rule.messageAnimation.id);
+        }
+        if (rule.lastingAnimation != null) {
+            json.put("longAnim", rule.lastingAnimation.id);
+        }
+        return json;
     }
 
     private static String eventKey(GlyphEvent event) {
