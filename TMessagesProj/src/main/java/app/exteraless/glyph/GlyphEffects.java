@@ -24,6 +24,14 @@ final class GlyphEffects {
 
     private static final long FADE_MS = 1200;
 
+    private static final long WAVE_PASS_MS = 1000;
+    private static final int WAVE_PASSES = 2;
+    /** The crest starts left of the first channel and ends right of the last, so every pass is dark at both ends. */
+    private static final double WAVE_HEAD_START = -0.1;
+    private static final double WAVE_HEAD_END = 1.4;
+    private static final double WAVE_TAIL = 0.1;
+    private static final double WAVE_FRONT = 0.4;
+
     /** Two flashes with a short gap, for one-off events. */
     static final GlyphEffect PULSE = new GlyphEffect() {
         @Override
@@ -128,6 +136,38 @@ final class GlyphEffects {
         }
     };
 
+    /** A crest running over all channels twice, for one-off events. */
+    static final GlyphEffect WAVE = new GlyphEffect() {
+        @Override
+        public long durationMs() {
+            return WAVE_PASS_MS * WAVE_PASSES;
+        }
+
+        @Override
+        public int brightness(long tMs, GlyphChannel channel) {
+            if (tMs < 0 || tMs >= WAVE_PASS_MS * WAVE_PASSES) {
+                return 0;
+            }
+            return wave(tMs, channel, PULSE);
+        }
+    };
+
+    /** A crest running over all channels forever, for events that last. */
+    static final GlyphEffect WAVE_LOOP = new GlyphEffect() {
+        @Override
+        public long durationMs() {
+            return -1;
+        }
+
+        @Override
+        public int brightness(long tMs, GlyphChannel channel) {
+            if (tMs < 0) {
+                return 0;
+            }
+            return wave(tMs, channel, BREATHE);
+        }
+    };
+
     /** Linear rise to full brightness over rampMs, then a fall back to zero of the same length. */
     private static int triangle(long tMs, long rampMs) {
         long phase = tMs <= rampMs ? tMs : rampMs * 2 - tMs;
@@ -135,6 +175,32 @@ final class GlyphEffects {
             return 0;
         }
         return (int) (MAX_BRIGHTNESS * phase / rampMs);
+    }
+
+    /**
+     * A crest with a short tail behind it, moving from the first channel to the
+     * last over one pass, ignoring zone borders. A single channel has no
+     * direction, so it gets the fallback that suits the kind.
+     */
+    private static int wave(long tMs, GlyphChannel channel, GlyphEffect fallback) {
+        if (channel.count <= 1) {
+            return fallback.brightness(tMs, channel);
+        }
+        double passTime = tMs % WAVE_PASS_MS;
+        double head = WAVE_HEAD_START
+                + (WAVE_HEAD_END - WAVE_HEAD_START) * passTime / WAVE_PASS_MS;
+        double p = (double) channel.index / (channel.count - 1);
+        double d = head - p;
+        double level;
+        if (d > -WAVE_TAIL && d < 0) {
+            level = 1 + d / WAVE_TAIL;
+        } else if (d >= 0 && d < WAVE_FRONT) {
+            double fall = 1 - d / WAVE_FRONT;
+            level = fall * fall;
+        } else {
+            return 0;
+        }
+        return (int) (MAX_BRIGHTNESS * level);
     }
 
     private GlyphEffects() {

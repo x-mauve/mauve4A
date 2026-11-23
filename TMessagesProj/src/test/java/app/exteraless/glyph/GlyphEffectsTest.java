@@ -9,6 +9,7 @@ import org.junit.Test;
 public class GlyphEffectsTest {
 
     private static final long STEP_MS = 5;
+    private static final long WAVE_PASS_MS = 1000;
     private static final GlyphChannel SINGLE = GlyphChannel.layout(1)[0];
 
     @Test
@@ -104,5 +105,87 @@ public class GlyphEffectsTest {
         assertNull(GlyphAnimation.fromId(null));
         assertNull(GlyphAnimation.fromId(""));
         assertNull(GlyphAnimation.fromId("wave"));
+    }
+
+    @Test
+    public void waveHasTwoPasses() {
+        assertEquals(WAVE_PASS_MS * 2, GlyphEffects.WAVE.durationMs());
+        assertEquals(-1, GlyphEffects.WAVE_LOOP.durationMs());
+    }
+
+    @Test
+    public void waveMovesFromFirstToLast() {
+        long previousPeak = -1;
+        for (GlyphChannel channel : GlyphChannel.layout(10)) {
+            long peakAt = -1;
+            int peak = -1;
+            for (long t = 0; t <= WAVE_PASS_MS; t += STEP_MS) {
+                int value = GlyphEffects.WAVE.brightness(t, channel);
+                if (value > peak) {
+                    peak = value;
+                    peakAt = t;
+                }
+            }
+            assertTrue("channel " + channel.index, peak >= GlyphEffects.MAX_BRIGHTNESS * 9 / 10);
+            assertTrue("channel " + channel.index + " peaks after the previous one",
+                    peakAt > previousPeak);
+            previousPeak = peakAt;
+        }
+    }
+
+    @Test
+    public void waveStartsAndEndsDark() {
+        GlyphChannel[] channels = GlyphChannel.layout(4);
+        for (long t : new long[]{0, 2000, 5000}) {
+            for (GlyphChannel channel : channels) {
+                assertEquals("at " + t, 0, GlyphEffects.WAVE.brightness(t, channel));
+            }
+        }
+    }
+
+    @Test
+    public void waveLoopRepeats() {
+        GlyphChannel[] channels = GlyphChannel.layout(10);
+        for (long t = 0; t <= WAVE_PASS_MS; t += STEP_MS) {
+            for (GlyphChannel channel : channels) {
+                assertEquals("at " + t, GlyphEffects.WAVE_LOOP.brightness(t, channel),
+                        GlyphEffects.WAVE_LOOP.brightness(t + WAVE_PASS_MS, channel));
+            }
+        }
+        boolean lit = false;
+        for (GlyphChannel channel : channels) {
+            lit |= GlyphEffects.WAVE_LOOP.brightness(60500, channel) > 0;
+        }
+        assertTrue(lit);
+    }
+
+    @Test
+    public void waveOnOneChannelFallsBack() {
+        GlyphChannel channel = GlyphChannel.layout(1)[0];
+        for (long t = 0; t <= 1500; t += STEP_MS) {
+            assertEquals("at " + t, GlyphEffects.PULSE.brightness(t, channel),
+                    GlyphEffects.WAVE.brightness(t, channel));
+            assertEquals("at " + t, GlyphEffects.BREATHE.brightness(t, channel),
+                    GlyphEffects.WAVE_LOOP.brightness(t, channel));
+        }
+    }
+
+    @Test
+    public void waveStaysInRange() {
+        int[][] layouts = {{1}, {4}, {11, 5, 20}};
+        for (int[] layout : layouts) {
+            for (GlyphChannel channel : GlyphChannel.layout(layout)) {
+                for (long t = -STEP_MS; t <= 2000; t += STEP_MS) {
+                    int value = GlyphEffects.WAVE.brightness(t, channel);
+                    assertTrue("wave " + layout.length + " at " + t,
+                            value >= 0 && value <= GlyphEffects.MAX_BRIGHTNESS);
+                }
+                for (long t = -STEP_MS; t <= 3000; t += STEP_MS) {
+                    int value = GlyphEffects.WAVE_LOOP.brightness(t, channel);
+                    assertTrue("wave loop " + layout.length + " at " + t,
+                            value >= 0 && value <= GlyphEffects.MAX_BRIGHTNESS);
+                }
+            }
+        }
     }
 }
