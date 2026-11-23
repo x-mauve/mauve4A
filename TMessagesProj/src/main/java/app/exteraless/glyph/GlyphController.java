@@ -153,7 +153,7 @@ public final class GlyphController {
             lastFlashZones = zones;
             // A preview that is still running must not cut this flash short.
             handler.removeCallbacks(previewStopRunnable);
-            local.play(zones, rule.messageAnimationOrDefault().effect());
+            local.play(zones, rule.messageAnimationOrDefault().oneShotEffect());
         });
     }
 
@@ -221,9 +221,15 @@ public final class GlyphController {
             }
             handler.removeCallbacks(previewStopRunnable);
             Set<String> target = zones == null || zones.isEmpty() ? allZones() : zones;
-            GlyphAnimation shown = animation != null ? animation : defaultAnimation(event);
-            local.play(target, shown.effect());
-            if (shown.lasting) {
+            // The event decides the kind, not the animation: the same animation
+            // may show up in both sections of a chat rule.
+            boolean lasting = event != GlyphEvent.MESSAGE;
+            GlyphAnimation shown = animation;
+            if (shown == null || (lasting ? !shown.supportsLasting() : !shown.supportsOneShot())) {
+                shown = defaultAnimation(event);
+            }
+            local.play(target, lasting ? shown.lastingEffect() : shown.oneShotEffect());
+            if (lasting) {
                 handler.postDelayed(previewStopRunnable, PREVIEW_LASTING_MS);
             }
         });
@@ -255,7 +261,7 @@ public final class GlyphController {
             GlyphRule rule = GlyphRules.resolve(event, dialogId);
             Set<String> zones = zonesOf(rule);
             local.play(zones != null ? zones : allZones(),
-                    rule.lastingAnimationOrDefault().effect());
+                    rule.lastingAnimationOrDefault().lastingEffect());
         }
     }
 

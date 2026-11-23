@@ -1,7 +1,6 @@
 package app.exteraless.glyph;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -29,7 +28,7 @@ public class GlyphEffectsTest {
     @Test
     public void oneShotEffectsEndAtTheirDuration() {
         for (GlyphAnimation animation : GlyphAnimation.oneShot()) {
-            GlyphEffect effect = animation.effect();
+            GlyphEffect effect = animation.oneShotEffect();
             long duration = effect.durationMs();
             assertTrue(animation.id, duration > 0);
             assertEquals(animation.id, 0, effect.brightness(duration, SINGLE));
@@ -40,14 +39,21 @@ public class GlyphEffectsTest {
     @Test
     public void brightnessStaysInRange() {
         for (GlyphAnimation animation : GlyphAnimation.values()) {
-            GlyphEffect effect = animation.effect();
-            long duration = effect.durationMs();
-            long end = duration >= 0 ? duration : 3000;
-            for (long t = -STEP_MS; t <= end; t += STEP_MS) {
-                int value = effect.brightness(t, SINGLE);
-                assertTrue(animation.id + " at " + t,
-                        value >= 0 && value <= GlyphEffects.MAX_BRIGHTNESS);
+            if (animation.supportsOneShot()) {
+                assertBrightnessInRange(animation.id, animation.oneShotEffect());
             }
+            if (animation.supportsLasting()) {
+                assertBrightnessInRange(animation.id, animation.lastingEffect());
+            }
+        }
+    }
+
+    private static void assertBrightnessInRange(String id, GlyphEffect effect) {
+        long duration = effect.durationMs();
+        long end = duration >= 0 ? duration : 3000;
+        for (long t = -STEP_MS; t <= end; t += STEP_MS) {
+            int value = effect.brightness(t, SINGLE);
+            assertTrue(id + " at " + t, value >= 0 && value <= GlyphEffects.MAX_BRIGHTNESS);
         }
     }
 
@@ -67,21 +73,27 @@ public class GlyphEffectsTest {
     @Test
     public void lastingEffectsRunUntilStopped() {
         for (GlyphAnimation animation : GlyphAnimation.lasting()) {
-            assertEquals(animation.id, -1, animation.effect().durationMs());
+            assertEquals(animation.id, -1, animation.lastingEffect().durationMs());
         }
         assertEquals(GlyphEffects.MAX_BRIGHTNESS, GlyphEffects.SOLID.brightness(60000, SINGLE));
     }
 
     @Test
-    public void oneShotAndLastingCoverEveryAnimation() {
-        assertEquals(GlyphAnimation.values().length,
-                GlyphAnimation.oneShot().size() + GlyphAnimation.lasting().size());
-        for (GlyphAnimation animation : GlyphAnimation.oneShot()) {
-            assertFalse(animation.id, animation.lasting);
+    public void everyAnimationSupportsAKind() {
+        for (GlyphAnimation animation : GlyphAnimation.values()) {
+            assertTrue(animation.id, animation.supportsOneShot() || animation.supportsLasting());
+            assertEquals(animation.id, animation.supportsOneShot(),
+                    GlyphAnimation.oneShot().contains(animation));
+            assertEquals(animation.id, animation.supportsLasting(),
+                    GlyphAnimation.lasting().contains(animation));
         }
-        for (GlyphAnimation animation : GlyphAnimation.lasting()) {
-            assertTrue(animation.id, animation.lasting);
-        }
+    }
+
+    @Test
+    public void wrongKindFallsBackToDefault() {
+        GlyphRule rule = new GlyphRule(true, null, GlyphAnimation.BREATHE, GlyphAnimation.PULSE);
+        assertEquals(GlyphAnimation.PULSE, rule.messageAnimationOrDefault());
+        assertEquals(GlyphAnimation.BREATHE, rule.lastingAnimationOrDefault());
     }
 
     @Test

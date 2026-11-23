@@ -10,12 +10,12 @@ import java.util.List;
  * names to strings.
  */
 public enum GlyphAnimation {
-    PULSE("pulse", false),
-    BLINK("blink", false),
-    HEARTBEAT("heartbeat", false),
-    FADE("fade", false),
-    BREATHE("breathe", true),
-    SOLID("solid", true);
+    PULSE("pulse", GlyphEffects.PULSE, null),
+    BLINK("blink", GlyphEffects.BLINK, null),
+    HEARTBEAT("heartbeat", GlyphEffects.HEARTBEAT, null),
+    FADE("fade", GlyphEffects.FADE, null),
+    BREATHE("breathe", null, GlyphEffects.BREATHE),
+    SOLID("solid", null, GlyphEffects.SOLID);
 
     public static final GlyphAnimation DEFAULT_ONE_SHOT = PULSE;
     public static final GlyphAnimation DEFAULT_LASTING = BREATHE;
@@ -27,7 +27,12 @@ public enum GlyphAnimation {
         List<GlyphAnimation> oneShot = new ArrayList<>();
         List<GlyphAnimation> lasting = new ArrayList<>();
         for (GlyphAnimation animation : values()) {
-            (animation.lasting ? lasting : oneShot).add(animation);
+            if (animation.supportsOneShot()) {
+                oneShot.add(animation);
+            }
+            if (animation.supportsLasting()) {
+                lasting.add(animation);
+            }
         }
         ONE_SHOT = Collections.unmodifiableList(oneShot);
         LASTING = Collections.unmodifiableList(lasting);
@@ -35,30 +40,33 @@ public enum GlyphAnimation {
 
     /** Stored in the rules JSON. */
     public final String id;
-    /** True when the animation runs until stopped: calls and voice recording. */
-    public final boolean lasting;
+    private final GlyphEffect oneShotEffect;
+    private final GlyphEffect lastingEffect;
 
-    GlyphAnimation(String id, boolean lasting) {
+    GlyphAnimation(String id, GlyphEffect oneShotEffect, GlyphEffect lastingEffect) {
         this.id = id;
-        this.lasting = lasting;
+        this.oneShotEffect = oneShotEffect;
+        this.lastingEffect = lastingEffect;
     }
 
-    GlyphEffect effect() {
-        switch (this) {
-            case BLINK:
-                return GlyphEffects.BLINK;
-            case HEARTBEAT:
-                return GlyphEffects.HEARTBEAT;
-            case FADE:
-                return GlyphEffects.FADE;
-            case BREATHE:
-                return GlyphEffects.BREATHE;
-            case SOLID:
-                return GlyphEffects.SOLID;
-            case PULSE:
-            default:
-                return GlyphEffects.PULSE;
-        }
+    /** True when the animation fits one-off events such as messages. */
+    public boolean supportsOneShot() {
+        return oneShotEffect != null;
+    }
+
+    /** True when the animation fits events that last, such as calls and voice recording. */
+    public boolean supportsLasting() {
+        return lastingEffect != null;
+    }
+
+    /** The one-shot effect, null when the animation does not fit one-off events. */
+    GlyphEffect oneShotEffect() {
+        return oneShotEffect;
+    }
+
+    /** The lasting effect, null when the animation does not fit events that last. */
+    GlyphEffect lastingEffect() {
+        return lastingEffect;
     }
 
     /** Null for an unknown or missing id. */

@@ -32,16 +32,16 @@ public final class GlyphRule {
         this.lastingAnimation = lastingAnimation;
     }
 
-    /** The message animation, or the default when none is stored or the stored one lasts. */
+    /** The message animation, or the default when none is stored or the stored one only lasts. */
     public GlyphAnimation messageAnimationOrDefault() {
-        return messageAnimation == null || messageAnimation.lasting
+        return messageAnimation == null || !messageAnimation.supportsOneShot()
                 ? GlyphAnimation.DEFAULT_ONE_SHOT
                 : messageAnimation;
     }
 
-    /** The call and recording animation, or the default when none is stored or it is one-shot. */
+    /** The call and recording animation, or the default when none is stored or it only flashes. */
     public GlyphAnimation lastingAnimationOrDefault() {
-        return lastingAnimation == null || !lastingAnimation.lasting
+        return lastingAnimation == null || !lastingAnimation.supportsLasting()
                 ? GlyphAnimation.DEFAULT_LASTING
                 : lastingAnimation;
     }
