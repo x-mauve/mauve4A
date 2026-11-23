@@ -51,6 +51,7 @@ final class StripGlyphEngine implements GlyphEngine {
 
     private GlyphEffect effect;
     private int[] effectChannels;
+    private GlyphChannel[] effectChannelInfo;
     private long effectStartedAt;
 
     private Set<String> pendingZoneIds;
@@ -180,7 +181,9 @@ final class StripGlyphEngine implements GlyphEngine {
             }
         }
         effect = newEffect;
-        effectChannels = resolveChannels(zoneIds);
+        ChannelLayout layout = resolveChannels(zoneIds);
+        effectChannels = layout.frameIndices;
+        effectChannelInfo = layout.channels;
         effectStartedAt = SystemClock.uptimeMillis();
         renderFrame();
     }
@@ -199,7 +202,7 @@ final class StripGlyphEngine implements GlyphEngine {
         Arrays.fill(frame, 0);
         int count = effectChannels.length;
         for (int i = 0; i < count; i++) {
-            int value = current.brightness(t, i, count);
+            int value = current.brightness(t, effectChannelInfo[i]);
             frame[effectChannels[i]] = Math.max(0, Math.min(GlyphEffects.MAX_BRIGHTNESS, value));
         }
         if (!sendFrame()) {
@@ -278,8 +281,11 @@ final class StripGlyphEngine implements GlyphEngine {
         pendingEffect = null;
     }
 
-    /** Frame indices of the requested zones in layout order. No known zone means all of them. */
-    private int[] resolveChannels(Set<String> zoneIds) {
+    /**
+     * Frame indices of the requested zones in layout order, plus where each
+     * channel sits among the zones. No known zone means all of them.
+     */
+    private ChannelLayout resolveChannels(Set<String> zoneIds) {
         boolean any = false;
         for (GlyphZone zone : device.zones) {
             if (zoneIds.contains(zone.id)) {
@@ -288,19 +294,39 @@ final class StripGlyphEngine implements GlyphEngine {
             }
         }
         int[] channels = new int[device.channelCount];
+        int[] segmentSizes = new int[device.zones.size()];
         int count = 0;
+        int segmentCount = 0;
         for (GlyphZone zone : device.zones) {
             if (any && !zoneIds.contains(zone.id)) {
                 continue;
             }
+            int inZone = 0;
             for (int i = 0; i < zone.channelCount() && count < channels.length; i++) {
                 int channel = zone.channel(i);
                 // The indices come from SDK constants; never let a bad one overrun the frame.
                 if (channel >= 0 && channel < frame.length) {
                     channels[count++] = channel;
+                    inZone++;
                 }
             }
+            if (inZone > 0) {
+                segmentSizes[segmentCount++] = inZone;
+            }
         }
-        return Arrays.copyOf(channels, count);
+        return new ChannelLayout(
+                Arrays.copyOf(channels, count),
+                GlyphChannel.layout(Arrays.copyOf(segmentSizes, segmentCount)));
+    }
+
+    /** Frame indices of the selected channels and where each of them sits. */
+    private static final class ChannelLayout {
+        final int[] frameIndices;
+        final GlyphChannel[] channels;
+
+        ChannelLayout(int[] frameIndices, GlyphChannel[] channels) {
+            this.frameIndices = frameIndices;
+            this.channels = channels;
+        }
     }
 }

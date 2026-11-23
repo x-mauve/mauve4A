@@ -7,5 +7,5 @@ interface GlyphEffect {
     long durationMs();
 
     /** Brightness 0..4095 for a channel at time tMs since the effect started. */
-    int brightness(long tMs, int channelIndexInRule, int channelCountInRule);
+    int brightness(long tMs, GlyphChannel channel);
 }

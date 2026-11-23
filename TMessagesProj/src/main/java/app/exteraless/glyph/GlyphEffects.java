@@ -32,7 +32,7 @@ final class GlyphEffects {
         }
 
         @Override
-        public int brightness(long tMs, int channelIndexInRule, int channelCountInRule) {
+        public int brightness(long tMs, GlyphChannel channel) {
             if (tMs < 0 || tMs >= PULSE_TOTAL_MS) {
                 return 0;
             }
@@ -52,7 +52,7 @@ final class GlyphEffects {
         }
 
         @Override
-        public int brightness(long tMs, int channelIndexInRule, int channelCountInRule) {
+        public int brightness(long tMs, GlyphChannel channel) {
             if (tMs < 0 || tMs >= BLINK_TOTAL_MS) {
                 return 0;
             }
@@ -68,7 +68,7 @@ final class GlyphEffects {
         }
 
         @Override
-        public int brightness(long tMs, int channelIndexInRule, int channelCountInRule) {
+        public int brightness(long tMs, GlyphChannel channel) {
             if (tMs < 0 || tMs >= HEARTBEAT_TOTAL_MS) {
                 return 0;
             }
@@ -90,7 +90,7 @@ final class GlyphEffects {
         }
 
         @Override
-        public int brightness(long tMs, int channelIndexInRule, int channelCountInRule) {
+        public int brightness(long tMs, GlyphChannel channel) {
             if (tMs < 0 || tMs >= FADE_MS) {
                 return 0;
             }
@@ -107,7 +107,7 @@ final class GlyphEffects {
         }
 
         @Override
-        public int brightness(long tMs, int channelIndexInRule, int channelCountInRule) {
+        public int brightness(long tMs, GlyphChannel channel) {
             if (tMs < 0) {
                 return 0;
             }
@@ -123,7 +123,7 @@ final class GlyphEffects {
         }
 
         @Override
-        public int brightness(long tMs, int channelIndexInRule, int channelCountInRule) {
+        public int brightness(long tMs, GlyphChannel channel) {
             return tMs < 0 ? 0 : MAX_BRIGHTNESS;
         }
     };
