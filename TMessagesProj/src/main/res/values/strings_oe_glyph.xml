@@ -24,6 +24,8 @@
     <string name="OEGlyphAnimationFade">Fade</string>
     <string name="OEGlyphAnimationBreathe">Breathe</string>
     <string name="OEGlyphAnimationSolid">Solid</string>
+    <string name="OEGlyphAnimationWave">Wave</string>
+    <string name="OEGlyphAnimationChase">Chase</string>
     <string name="OEGlyphZone">Glyph %s</string>
     <string name="OEGlyphRuleLastZone">At least one glyph has to stay selected. Turn the rule off to keep the glyphs dark.</string>
     <string name="OEGlyphRuleDelete">Delete rule</string>

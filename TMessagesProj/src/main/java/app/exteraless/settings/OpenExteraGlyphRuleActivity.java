@@ -285,6 +285,10 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                 return R.string.OEGlyphAnimationBreathe;
             case SOLID:
                 return R.string.OEGlyphAnimationSolid;
+            case WAVE:
+                return R.string.OEGlyphAnimationWave;
+            case CHASE:
+                return R.string.OEGlyphAnimationChase;
             case PULSE:
             default:
                 return R.string.OEGlyphAnimationPulse;

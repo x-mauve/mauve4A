@@ -15,7 +15,9 @@ public enum GlyphAnimation {
     HEARTBEAT("heartbeat", GlyphEffects.HEARTBEAT, null),
     FADE("fade", GlyphEffects.FADE, null),
     BREATHE("breathe", null, GlyphEffects.BREATHE),
-    SOLID("solid", null, GlyphEffects.SOLID);
+    SOLID("solid", null, GlyphEffects.SOLID),
+    WAVE("wave", GlyphEffects.WAVE, GlyphEffects.WAVE_LOOP),
+    CHASE("chase", GlyphEffects.CHASE, GlyphEffects.CHASE_LOOP);
 
     public static final GlyphAnimation DEFAULT_ONE_SHOT = PULSE;
     public static final GlyphAnimation DEFAULT_LASTING = BREATHE;

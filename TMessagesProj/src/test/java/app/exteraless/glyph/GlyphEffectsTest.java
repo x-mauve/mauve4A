@@ -105,7 +105,18 @@ public class GlyphEffectsTest {
         }
         assertNull(GlyphAnimation.fromId(null));
         assertNull(GlyphAnimation.fromId(""));
-        assertNull(GlyphAnimation.fromId("wave"));
+        assertNull(GlyphAnimation.fromId("sparkle"));
+    }
+
+    @Test
+    public void waveAndChaseAreOfferedForBothKinds() {
+        GlyphAnimation[] both = {GlyphAnimation.WAVE, GlyphAnimation.CHASE};
+        for (GlyphAnimation animation : both) {
+            assertTrue(animation.id, GlyphAnimation.oneShot().contains(animation));
+            assertTrue(animation.id, GlyphAnimation.lasting().contains(animation));
+            assertTrue(animation.id, animation.oneShotEffect().durationMs() > 0);
+            assertEquals(animation.id, -1, animation.lastingEffect().durationMs());
+        }
     }
 
     @Test
