@@ -4,7 +4,7 @@
 
 # mauve
 
-A fork of exteraless, the open-source take on exteraGram, with a permission model for plugins
+A Telegram client with full exteraGram plugin support, where plugins get only what they ask for
 
 [![Channel](https://img.shields.io/badge/Telegram-@mauveApp-2CA5E0?logo=telegram&logoColor=white)](https://t.me/mauveApp)
 
@@ -14,15 +14,14 @@ A fork of exteraless, the open-source take on exteraGram, with a permission mode
 
 ## What this is
 
-mauve is a fork of [exteraless](https://github.com/exteraless/exteraless). exteraless itself is a fork of
-[NagramX](https://github.com/risin42/NagramX) that implements exteraGram's features
-as open source. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to sync with upstream.
+mauve is an independent Telegram client for Android. It runs exteraGram plugins as they
+are, so the plugins you already use keep working.
 
 The main focus is **plugin security**. In exteraGram, a plugin has no restrictions at all.
 Here, plugins have a permission model: a plugin declares what it needs, you see that
 on the install screen, and it gets only what it declared.
 
-The project is **in beta**: some exteraGram features haven't been ported yet. If you
+The project is **in beta**: some exteraGram features aren't available yet. If you
 notice something missing, open an issue or write to the [channel](https://t.me/mauveApp?direct).
 
 * Package name: `org.xchunk.mauve`
@@ -134,6 +133,13 @@ You need two repository secrets:
   ```
 
 Then run the **Release Build** workflow. The finished APK is in the run artifacts.
+
+### Built on
+
+mauve is built on [exteraless](https://github.com/exteraless/exteraless), an open-source
+implementation of exteraGram's features based on [NagramX](https://github.com/risin42/NagramX)
+and the official [Telegram for Android](https://github.com/DrKLO/Telegram) sources.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how mauve syncs with it.
 
 ### Design credits
 
