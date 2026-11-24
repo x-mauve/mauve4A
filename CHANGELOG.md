@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Folders:** an opt-in setting in Appearance shows your chat folders as tabs
   in the archive. Each tab lists only the archived chats that match the folder,
   and folders that exclude archived chats are hidden there.
-- **Glyph:** pick an animation for each rule: Pulse, Blink, Heartbeat or Fade for
-  messages, Breathe or Solid for calls and voice recording.
+- **Glyph:** pick an animation for each rule: Pulse, Blink, Heartbeat, Fade, Wave
+  or Chase for messages, Breathe, Solid, Wave or Chase for calls and voice
+  recording.
 
 ## [0.3.0] - 2026-11-22
 
