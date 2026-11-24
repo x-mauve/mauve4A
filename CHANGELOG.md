@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-preview.2] - 2026-11-24
+
 ### Added
 
 - **Folders:** an opt-in setting in Appearance shows your chat folders as tabs
