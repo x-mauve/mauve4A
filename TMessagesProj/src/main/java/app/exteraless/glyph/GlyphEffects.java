@@ -26,11 +26,12 @@ final class GlyphEffects {
 
     private static final long WAVE_PASS_MS = 1000;
     private static final int WAVE_PASSES = 2;
-    /** The crest starts left of the first channel and ends right of the last, so every pass is dark at both ends. */
-    private static final double WAVE_HEAD_START = -0.1;
-    private static final double WAVE_HEAD_END = 1.4;
-    private static final double WAVE_TAIL = 0.1;
-    private static final double WAVE_FRONT = 0.4;
+    /** Length of the rise ahead of the crest and of the tail behind it, as parts of the strip. */
+    private static final double WAVE_FRONT = 0.1;
+    private static final double WAVE_TAIL = 0.4;
+    /** The crest starts before the first channel and ends past the last, so every pass is dark at both ends. */
+    private static final double WAVE_HEAD_START = -WAVE_FRONT;
+    private static final double WAVE_HEAD_END = 1 + WAVE_TAIL;
 
     private static final long CHASE_STEP_MS = 150;
     private static final int CHASE_STEPS = 12;
@@ -213,7 +214,7 @@ final class GlyphEffects {
     }
 
     /**
-     * A crest with a short tail behind it, moving from the first channel to the
+     * A crest with a tail behind it, moving from the first channel to the
      * last over one pass, ignoring zone borders. A single channel has no
      * direction, so it gets the fallback that suits the kind.
      */
@@ -227,10 +228,10 @@ final class GlyphEffects {
         double p = (double) channel.index / (channel.count - 1);
         double d = head - p;
         double level;
-        if (d > -WAVE_TAIL && d < 0) {
-            level = 1 + d / WAVE_TAIL;
-        } else if (d >= 0 && d < WAVE_FRONT) {
-            double fall = 1 - d / WAVE_FRONT;
+        if (d > -WAVE_FRONT && d < 0) {
+            level = 1 + d / WAVE_FRONT;
+        } else if (d >= 0 && d < WAVE_TAIL) {
+            double fall = 1 - d / WAVE_TAIL;
             level = fall * fall;
         } else {
             return 0;
