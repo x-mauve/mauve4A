@@ -1,6 +1,7 @@
 package app.exteraless.glyph;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -187,5 +188,67 @@ public class GlyphEffectsTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void chaseHasTwelveSteps() {
+        assertEquals(1800, GlyphEffects.CHASE.durationMs());
+        assertEquals(-1, GlyphEffects.CHASE_LOOP.durationMs());
+    }
+
+    @Test
+    public void chaseLightsOneSegmentAtATime() {
+        GlyphChannel[] channels = GlyphChannel.layout(2, 3, 1);
+        long[] times = {75, 225, 375, 525};
+        int[] lit = {0, 1, 2, 0};
+        for (int i = 0; i < times.length; i++) {
+            for (GlyphChannel channel : channels) {
+                int expected = channel.segment == lit[i] ? GlyphEffects.MAX_BRIGHTNESS : 0;
+                assertEquals("at " + times[i] + " channel " + channel.index,
+                        expected, GlyphEffects.CHASE.brightness(times[i], channel));
+            }
+        }
+    }
+
+    @Test
+    public void chasePlaysWholePasses() {
+        GlyphChannel[] five = GlyphChannel.layout(1, 1, 1, 1, 1);
+        assertTrue(anyLit(GlyphEffects.CHASE, 1499, five));
+        assertFalse(anyLit(GlyphEffects.CHASE, 1500, five));
+
+        GlyphChannel[] eleven = GlyphChannel.layout(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+        assertTrue(anyLit(GlyphEffects.CHASE, 1649, eleven));
+        assertFalse(anyLit(GlyphEffects.CHASE, 1650, eleven));
+
+        GlyphChannel[] four = GlyphChannel.layout(1, 1, 1, 1);
+        assertEquals(GlyphEffects.MAX_BRIGHTNESS, GlyphEffects.CHASE.brightness(1799, four[3]));
+    }
+
+    @Test
+    public void chaseLoopRepeats() {
+        GlyphChannel[] channels = GlyphChannel.layout(1, 1, 1);
+        assertEquals(GlyphEffects.MAX_BRIGHTNESS,
+                GlyphEffects.CHASE_LOOP.brightness(150 * 300 + 75, channels[0]));
+    }
+
+    @Test
+    public void chaseOnOneSegmentFallsBack() {
+        for (GlyphChannel channel : GlyphChannel.layout(8)) {
+            for (long t = 0; t <= 1500; t += STEP_MS) {
+                assertEquals("at " + t, GlyphEffects.PULSE.brightness(t, channel),
+                        GlyphEffects.CHASE.brightness(t, channel));
+                assertEquals("at " + t, GlyphEffects.BREATHE.brightness(t, channel),
+                        GlyphEffects.CHASE_LOOP.brightness(t, channel));
+            }
+        }
+    }
+
+    private static boolean anyLit(GlyphEffect effect, long t, GlyphChannel[] channels) {
+        for (GlyphChannel channel : channels) {
+            if (effect.brightness(t, channel) > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -32,6 +32,9 @@ final class GlyphEffects {
     private static final double WAVE_TAIL = 0.1;
     private static final double WAVE_FRONT = 0.4;
 
+    private static final long CHASE_STEP_MS = 150;
+    private static final int CHASE_STEPS = 12;
+
     /** Two flashes with a short gap, for one-off events. */
     static final GlyphEffect PULSE = new GlyphEffect() {
         @Override
@@ -168,6 +171,38 @@ final class GlyphEffects {
         }
     };
 
+    /** Whole zones lighting up one after another, for one-off events. */
+    static final GlyphEffect CHASE = new GlyphEffect() {
+        @Override
+        public long durationMs() {
+            return CHASE_STEP_MS * CHASE_STEPS;
+        }
+
+        @Override
+        public int brightness(long tMs, GlyphChannel channel) {
+            if (tMs < 0 || tMs >= CHASE_STEP_MS * CHASE_STEPS) {
+                return 0;
+            }
+            return chase(tMs, channel, true, PULSE);
+        }
+    };
+
+    /** Whole zones lighting up one after another forever, for events that last. */
+    static final GlyphEffect CHASE_LOOP = new GlyphEffect() {
+        @Override
+        public long durationMs() {
+            return -1;
+        }
+
+        @Override
+        public int brightness(long tMs, GlyphChannel channel) {
+            if (tMs < 0) {
+                return 0;
+            }
+            return chase(tMs, channel, false, BREATHE);
+        }
+    };
+
     /** Linear rise to full brightness over rampMs, then a fall back to zero of the same length. */
     private static int triangle(long tMs, long rampMs) {
         long phase = tMs <= rampMs ? tMs : rampMs * 2 - tMs;
@@ -201,6 +236,30 @@ final class GlyphEffects {
             return 0;
         }
         return (int) (MAX_BRIGHTNESS * level);
+    }
+
+    /**
+     * Hard on and off, one zone at a time, with no fade. A one-shot chase plays
+     * whole passes only; a single zone has no chase, so it gets the fallback.
+     */
+    private static int chase(long tMs, GlyphChannel channel, boolean oneShot,
+                             GlyphEffect fallback) {
+        if (channel.segmentCount <= 1) {
+            return fallback.brightness(tMs, channel);
+        }
+        long step = tMs / CHASE_STEP_MS;
+        if (oneShot && step >= wholePassSteps(channel.segmentCount)) {
+            return 0;
+        }
+        return channel.segment == step % channel.segmentCount ? MAX_BRIGHTNESS : 0;
+    }
+
+    /** Steps a one-shot chase runs: whole passes only, so it never stops mid-pass. */
+    private static long wholePassSteps(int segmentCount) {
+        if (segmentCount > CHASE_STEPS) {
+            return CHASE_STEPS;
+        }
+        return (CHASE_STEPS / segmentCount) * segmentCount;
     }
 
     private GlyphEffects() {
