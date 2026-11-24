@@ -4,10 +4,11 @@ Guidance for AI coding agents working in this repository.
 
 ## Project
 
-mauve is an Android Telegram client (package `org.xchunk.mauve`). It's a fork of
-[exteraless](https://github.com/exteraless/exteraless), which is a fork of NagramX
-that reimplements exteraGram features as open source. The main focus is a permission
-model for Python plugins. See `README.md` and `CONTRIBUTING.md`.
+mauve is an independent Android Telegram client (package `org.xchunk.mauve`) with full
+exteraGram plugin support. The main focus is a permission model for Python plugins.
+The code is built on [exteraless](https://github.com/exteraless/exteraless), a NagramX-based
+open-source implementation of exteraGram features, and syncs with it as upstream.
+See `README.md` and `CONTRIBUTING.md`.
 
 ## Rules
 
