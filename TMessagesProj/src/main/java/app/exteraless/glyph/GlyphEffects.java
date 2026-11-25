@@ -44,6 +44,14 @@ final class GlyphEffects {
     private static final double PING_PONG_RADIUS = 0.15;
     private static final long PING_PONG_FADE_MS = 150;
 
+    private static final long SPARKLE_SLOT_MS = 240;
+    private static final int SPARKLE_SLOTS = 8;
+    /** One extra slot covers the largest per-channel offset, so every twinkle finishes. */
+    private static final long SPARKLE_TOTAL_MS = (SPARKLE_SLOTS + 1) * SPARKLE_SLOT_MS;
+    private static final long SPARKLE_RAMP_MS = SPARKLE_SLOT_MS / 2;
+    /** Percent of slots in which a channel twinkles on its own, outside its turn. */
+    private static final int SPARKLE_CHANCE = 35;
+
     /** Two flashes with a short gap, for one-off events. */
     static final GlyphEffect PULSE = new GlyphEffect() {
         @Override
@@ -244,6 +252,38 @@ final class GlyphEffects {
         }
     };
 
+    /** Random twinkles over all channels, for one-off events. */
+    static final GlyphEffect SPARKLE = new GlyphEffect() {
+        @Override
+        public long durationMs() {
+            return SPARKLE_TOTAL_MS;
+        }
+
+        @Override
+        public int brightness(long tMs, GlyphChannel channel) {
+            if (tMs < 0 || tMs >= SPARKLE_TOTAL_MS) {
+                return 0;
+            }
+            return sparkle(tMs, channel, true);
+        }
+    };
+
+    /** Random twinkles over all channels forever, for events that last. */
+    static final GlyphEffect SPARKLE_LOOP = new GlyphEffect() {
+        @Override
+        public long durationMs() {
+            return -1;
+        }
+
+        @Override
+        public int brightness(long tMs, GlyphChannel channel) {
+            if (tMs < 0) {
+                return 0;
+            }
+            return sparkle(tMs, channel, false);
+        }
+    };
+
     /** Linear rise to full brightness over rampMs, then a fall back to zero of the same length. */
     private static int triangle(long tMs, long rampMs) {
         long phase = tMs <= rampMs ? tMs : rampMs * 2 - tMs;
@@ -293,6 +333,38 @@ final class GlyphEffects {
             return 0;
         }
         return channel.segment == step % channel.segmentCount ? MAX_BRIGHTNESS : 0;
+    }
+
+    /**
+     * Independent twinkles. Every slot lights at least one channel, so short
+     * strips never go dark for long. The randomness is a hash of the slot and
+     * the channel, which keeps every frame repeatable. A single channel has
+     * nothing to alternate with, so it gets the fallback that suits the kind.
+     */
+    private static int sparkle(long tMs, GlyphChannel channel, boolean oneShot) {
+        if (channel.count <= 1) {
+            return (oneShot ? PULSE : BREATHE).brightness(tMs, channel);
+        }
+        long local = tMs - noise(-1, channel.index) % SPARKLE_SLOT_MS;
+        if (local < 0) {
+            return 0;
+        }
+        long slot = local / SPARKLE_SLOT_MS;
+        if (oneShot && slot >= SPARKLE_SLOTS) {
+            return 0;
+        }
+        boolean lit = channel.index == noise(slot, -1) % channel.count
+                || noise(slot, channel.index) % 100 < SPARKLE_CHANCE;
+        return lit ? triangle(local % SPARKLE_SLOT_MS, SPARKLE_RAMP_MS) : 0;
+    }
+
+    /** Hash of a slot and a channel, in 0..Integer.MAX_VALUE. */
+    private static int noise(long slot, int channel) {
+        long h = slot * 0x9E3779B97F4A7C15L + channel * 0xC2B2AE3D27D4EB4FL;
+        h ^= h >>> 29;
+        h *= 0xBF58476D1CE4E5B9L;
+        h ^= h >>> 32;
+        return (int) (h & 0x7FFFFFFF);
     }
 
     /**

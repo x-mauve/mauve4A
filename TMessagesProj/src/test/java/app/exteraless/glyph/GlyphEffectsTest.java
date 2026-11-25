@@ -332,6 +332,104 @@ public class GlyphEffectsTest {
         }
     }
 
+    @Test
+    public void sparkleLightsEverySlot() {
+        int[][] layouts = {{2}, {4}, {6}, {11, 5, 20}};
+        for (int[] layout : layouts) {
+            GlyphChannel[] channels = GlyphChannel.layout(layout);
+            for (int slot = 0; slot < 8; slot++) {
+                boolean lit = false;
+                for (long t = slot * 240L; t < (slot + 2) * 240L && !lit; t += STEP_MS) {
+                    lit = anyLit(GlyphEffects.SPARKLE, t, channels);
+                }
+                assertTrue("layout " + layout.length + " slot " + slot, lit);
+            }
+        }
+    }
+
+    @Test
+    public void sparkleChannelsDiffer() {
+        GlyphChannel[] channels = GlyphChannel.layout(6);
+        boolean differ = false;
+        for (long t = 0; t <= 1920 && !differ; t += STEP_MS) {
+            boolean lit = false;
+            boolean dark = false;
+            for (GlyphChannel channel : channels) {
+                int value = GlyphEffects.SPARKLE.brightness(t, channel);
+                lit |= value > 0;
+                dark |= value == 0;
+            }
+            differ = lit && dark;
+        }
+        assertTrue(differ);
+    }
+
+    @Test
+    public void sparkleReachesEveryChannel() {
+        for (GlyphChannel channel : GlyphChannel.layout(11, 5, 20)) {
+            int peak = 0;
+            for (long t = 0; t <= 60000; t += STEP_MS) {
+                peak = Math.max(peak, GlyphEffects.SPARKLE_LOOP.brightness(t, channel));
+            }
+            assertTrue("channel " + channel.index,
+                    peak > GlyphEffects.MAX_BRIGHTNESS * 9 / 10);
+        }
+    }
+
+    @Test
+    public void sparkleStartsAndEndsDark() {
+        GlyphChannel[] channels = GlyphChannel.layout(4);
+        for (long t : new long[]{0, 2160, 5000}) {
+            for (GlyphChannel channel : channels) {
+                assertEquals("at " + t, 0, GlyphEffects.SPARKLE.brightness(t, channel));
+            }
+        }
+    }
+
+    @Test
+    public void sparkleLoopContinuesTheOneShot() {
+        GlyphChannel[] channels = GlyphChannel.layout(6);
+        for (long t = 0; t <= 1915; t += STEP_MS) {
+            for (GlyphChannel channel : channels) {
+                assertEquals("at " + t, GlyphEffects.SPARKLE.brightness(t, channel),
+                        GlyphEffects.SPARKLE_LOOP.brightness(t, channel));
+            }
+        }
+        boolean lit = false;
+        for (long t = 60000; t < 60480 && !lit; t += STEP_MS) {
+            lit = anyLit(GlyphEffects.SPARKLE_LOOP, t, channels);
+        }
+        assertTrue(lit);
+    }
+
+    @Test
+    public void sparkleOnOneChannelFallsBack() {
+        GlyphChannel channel = GlyphChannel.layout(1)[0];
+        for (long t = 0; t <= 1500; t += STEP_MS) {
+            assertEquals("at " + t, GlyphEffects.PULSE.brightness(t, channel),
+                    GlyphEffects.SPARKLE.brightness(t, channel));
+            assertEquals("at " + t, GlyphEffects.BREATHE.brightness(t, channel),
+                    GlyphEffects.SPARKLE_LOOP.brightness(t, channel));
+        }
+    }
+
+    @Test
+    public void sparkleStaysInRange() {
+        int[][] layouts = {{1}, {4}, {11, 5, 20}};
+        for (int[] layout : layouts) {
+            for (GlyphChannel channel : GlyphChannel.layout(layout)) {
+                for (long t = -STEP_MS; t <= 3000; t += STEP_MS) {
+                    int value = GlyphEffects.SPARKLE.brightness(t, channel);
+                    assertTrue("sparkle " + layout.length + " at " + t,
+                            value >= 0 && value <= GlyphEffects.MAX_BRIGHTNESS);
+                    value = GlyphEffects.SPARKLE_LOOP.brightness(t, channel);
+                    assertTrue("sparkle loop " + layout.length + " at " + t,
+                            value >= 0 && value <= GlyphEffects.MAX_BRIGHTNESS);
+                }
+            }
+        }
+    }
+
     private static boolean anyLit(GlyphEffect effect, long t, GlyphChannel[] channels) {
         for (GlyphChannel channel : channels) {
             if (effect.brightness(t, channel) > 0) {
