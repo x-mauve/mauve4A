@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Badges:** the mauve badge no longer sits far from the name or the premium
   star in search results, including the search when forwarding a message.
+- **Badges:** names with a mauve badge no longer shift away from the avatar
+  in search results in right-to-left languages.
 
 ## [0.4.0-preview.3] - 2026-11-25
 
