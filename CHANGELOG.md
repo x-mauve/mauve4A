@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-preview.3] - 2026-11-25
+
 ### Added
 
 - **Glyph:** two more animations, Ping-pong and Sparkle, for messages, calls and
