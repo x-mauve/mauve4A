@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 
 import app.exteraless.glyph.GlyphAnimation;
+import app.exteraless.glyph.GlyphBrightness;
 import app.exteraless.glyph.GlyphConfig;
 import app.exteraless.glyph.GlyphController;
 import app.exteraless.glyph.GlyphDevice;
@@ -55,6 +56,8 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
     /** Animations picked on screen. Only the ones matching the rule type are shown and saved. */
     private GlyphAnimation messageAnimation;
     private GlyphAnimation lastingAnimation;
+    /** Brightness picked on screen, shared by both kinds in a chat rule. */
+    private GlyphBrightness brightness;
 
     private int enabledRow;
     private int zonesDividerRow;
@@ -68,6 +71,10 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
     private int lastingAnimationHeaderRow;
     private int lastingAnimationStartRow;
     private int lastingAnimationEndRow;
+    private int brightnessDividerRow;
+    private int brightnessHeaderRow;
+    private int brightnessStartRow;
+    private int brightnessEndRow;
     private int actionsDividerRow;
     private int previewRow;
     private int deleteRow;
@@ -141,6 +148,7 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         ruleEnabled = rule.enabled;
         messageAnimation = rule.messageAnimationOrDefault();
         lastingAnimation = rule.lastingAnimationOrDefault();
+        brightness = rule.brightnessOrDefault();
         // Ids from another phone model can arrive with a settings backup.
         for (GlyphZone zone : zones) {
             if (rule.zones.contains(zone.id)) {
@@ -183,6 +191,15 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
             lastingAnimationEndRow = rowCount;
         } else {
             lastingAnimationHeaderRow = lastingAnimationStartRow = lastingAnimationEndRow = -1;
+        }
+        if (showsBrightness()) {
+            brightnessDividerRow = addRow();
+            brightnessHeaderRow = addRow();
+            brightnessStartRow = rowCount;
+            rowCount += GlyphBrightness.values().length;
+            brightnessEndRow = rowCount;
+        } else {
+            brightnessDividerRow = brightnessHeaderRow = brightnessStartRow = brightnessEndRow = -1;
         }
         actionsDividerRow = addRow();
         previewRow = addRow();
@@ -246,12 +263,17 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
             listAdapter.notifyItemRangeChanged(lastingAnimationStartRow,
                     lastingAnimationEndRow - lastingAnimationStartRow);
             save();
+        } else if (position >= brightnessStartRow && position < brightnessEndRow) {
+            brightness = GlyphBrightness.values()[position - brightnessStartRow];
+            listAdapter.notifyItemRangeChanged(brightnessStartRow,
+                    brightnessEndRow - brightnessStartRow);
+            save();
         } else if (position == previewRow) {
             // A chat rule is previewed as a message, its most common use.
             GlyphAnimation animation = event == null || event == GlyphEvent.MESSAGE
                     ? messageAnimation : lastingAnimation;
             GlyphController.getInstance().preview(storedZones(),
-                    event != null ? event : GlyphEvent.MESSAGE, animation);
+                    event != null ? event : GlyphEvent.MESSAGE, animation, brightness);
         } else if (position == deleteRow) {
             GlyphRules.removeChatRule(dialogId);
             finishFragment();
@@ -271,6 +293,11 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
 
     private boolean showsLastingAnimation() {
         return event != GlyphEvent.MESSAGE;
+    }
+
+    /** The Glyph Matrix has no zones to dim, so brightness only shows on phones with glyphs. */
+    private boolean showsBrightness() {
+        return zones != null && !zones.isEmpty();
     }
 
     private static int animationName(GlyphAnimation animation) {
@@ -299,6 +326,18 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         }
     }
 
+    private static int brightnessName(GlyphBrightness brightness) {
+        switch (brightness) {
+            case LOW:
+                return R.string.OEGlyphBrightnessLow;
+            case MEDIUM:
+                return R.string.OEGlyphBrightnessMedium;
+            case HIGH:
+            default:
+                return R.string.OEGlyphBrightnessHigh;
+        }
+    }
+
     /** Zones as they are stored: in layout order, with "all of them" as an empty set. */
     private Set<String> storedZones() {
         Set<String> stored = new LinkedHashSet<>();
@@ -315,11 +354,12 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
     private void save() {
         GlyphRule rule;
         if (event == null) {
-            rule = new GlyphRule(ruleEnabled, storedZones(), messageAnimation, lastingAnimation);
+            rule = new GlyphRule(ruleEnabled, storedZones(), messageAnimation, lastingAnimation,
+                    brightness);
         } else if (event == GlyphEvent.MESSAGE) {
-            rule = new GlyphRule(ruleEnabled, storedZones(), messageAnimation, null);
+            rule = new GlyphRule(ruleEnabled, storedZones(), messageAnimation, null, brightness);
         } else {
-            rule = new GlyphRule(ruleEnabled, storedZones(), null, lastingAnimation);
+            rule = new GlyphRule(ruleEnabled, storedZones(), null, lastingAnimation, brightness);
         }
         if (event != null) {
             GlyphRules.setEventRule(event, rule);
@@ -355,6 +395,8 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                     } else if (position == lastingAnimationHeaderRow) {
                         cell.setText(getString(event == null
                                 ? R.string.OEGlyphRuleCallAnimation : R.string.OEGlyphRuleAnimation));
+                    } else if (position == brightnessHeaderRow) {
+                        cell.setText(getString(R.string.OEGlyphRuleBrightness));
                     }
                     break;
                 }
@@ -372,16 +414,22 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_RADIO: {
                     TextRadioCell cell = (TextRadioCell) holder.itemView;
-                    if (position < messageAnimationEndRow) {
+                    if (position >= messageAnimationStartRow && position < messageAnimationEndRow) {
                         GlyphAnimation animation =
                                 GlyphAnimation.oneShot().get(position - messageAnimationStartRow);
                         cell.setTextAndCheck(getString(animationName(animation)),
                                 animation == messageAnimation, position + 1 < messageAnimationEndRow);
-                    } else {
+                    } else if (position >= lastingAnimationStartRow
+                            && position < lastingAnimationEndRow) {
                         GlyphAnimation animation =
                                 GlyphAnimation.lasting().get(position - lastingAnimationStartRow);
                         cell.setTextAndCheck(getString(animationName(animation)),
                                 animation == lastingAnimation, position + 1 < lastingAnimationEndRow);
+                    } else {
+                        GlyphBrightness level =
+                                GlyphBrightness.values()[position - brightnessStartRow];
+                        cell.setTextAndCheck(getString(brightnessName(level)),
+                                level == brightness, position + 1 < brightnessEndRow);
                     }
                     break;
                 }
@@ -417,13 +465,15 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
             if (position == enabledRow) {
                 return TYPE_CHECK;
             } else if (position == zonesHeaderRow || position == messageAnimationHeaderRow
-                    || position == lastingAnimationHeaderRow) {
+                    || position == lastingAnimationHeaderRow || position == brightnessHeaderRow) {
                 return TYPE_HEADER;
             } else if (position >= zonesStartRow && position < zonesEndRow) {
                 return TYPE_CHECKBOX;
             } else if (position >= messageAnimationStartRow && position < messageAnimationEndRow) {
                 return TYPE_RADIO;
             } else if (position >= lastingAnimationStartRow && position < lastingAnimationEndRow) {
+                return TYPE_RADIO;
+            } else if (position >= brightnessStartRow && position < brightnessEndRow) {
                 return TYPE_RADIO;
             } else if (position == previewRow || position == deleteRow) {
                 return TYPE_TEXT;

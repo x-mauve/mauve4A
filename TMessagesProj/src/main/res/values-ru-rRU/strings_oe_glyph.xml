@@ -27,6 +27,10 @@
     <string name="OEGlyphAnimationChase">Бегущий огонь</string>
     <string name="OEGlyphAnimationPingPong">Пинг-понг</string>
     <string name="OEGlyphAnimationSparkle">Искры</string>
+    <string name="OEGlyphRuleBrightness">Яркость</string>
+    <string name="OEGlyphBrightnessLow">Низкая</string>
+    <string name="OEGlyphBrightnessMedium">Средняя</string>
+    <string name="OEGlyphBrightnessHigh">Высокая</string>
     <string name="OEGlyphZone">Глиф %s</string>
     <string name="OEGlyphRuleLastZone">Должен остаться выбранным хотя бы один глиф. Чтобы глифы не загорались, выключите правило.</string>
     <string name="OEGlyphRuleDelete">Удалить правило</string>

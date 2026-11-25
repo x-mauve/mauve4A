@@ -207,11 +207,12 @@ public final class GlyphController {
 
     /**
      * Plays a rule from the settings the way {@code event} would show it. An
-     * empty set stands for every zone, a null animation for the event default.
-     * The screen-off mode, the retrigger guard and the rule's own switch do not
-     * apply, but a real call or recording keeps the glyphs.
+     * empty set stands for every zone, a null animation or brightness for the
+     * event default. The screen-off mode, the retrigger guard and the rule's own
+     * switch do not apply, but a real call or recording keeps the glyphs.
      */
-    public void preview(Set<String> zones, GlyphEvent event, GlyphAnimation animation) {
+    public void preview(Set<String> zones, GlyphEvent event, GlyphAnimation animation,
+                        GlyphBrightness brightness) {
         handler.post(() -> {
             if (callActive || recordingActive) {
                 return;
@@ -229,7 +230,8 @@ public final class GlyphController {
             if (shown == null || (lasting ? !shown.supportsLasting() : !shown.supportsOneShot())) {
                 shown = defaultAnimation(event);
             }
-            local.play(target, lasting ? shown.lastingEffect() : shown.oneShotEffect());
+            local.play(target, (brightness != null ? brightness : GlyphBrightness.DEFAULT)
+                    .apply(lasting ? shown.lastingEffect() : shown.oneShotEffect()));
             if (lasting) {
                 handler.postDelayed(previewStopRunnable, PREVIEW_LASTING_MS);
             }
