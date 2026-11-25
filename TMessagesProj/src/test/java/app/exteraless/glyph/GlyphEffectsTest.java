@@ -3,6 +3,7 @@ package app.exteraless.glyph;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -429,6 +430,44 @@ public class GlyphEffectsTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void brightnessScalesEffects() {
+        assertEquals(GlyphEffects.MAX_BRIGHTNESS * 15 / 100,
+                GlyphBrightness.LOW.apply(GlyphEffects.SOLID).brightness(100, SINGLE));
+        assertEquals(GlyphEffects.MAX_BRIGHTNESS * 45 / 100,
+                GlyphBrightness.MEDIUM.apply(GlyphEffects.SOLID).brightness(100, SINGLE));
+        assertSame(GlyphEffects.SOLID, GlyphBrightness.HIGH.apply(GlyphEffects.SOLID));
+    }
+
+    @Test
+    public void brightnessKeepsDuration() {
+        for (GlyphBrightness brightness : GlyphBrightness.values()) {
+            assertEquals(GlyphEffects.PULSE.durationMs(),
+                    brightness.apply(GlyphEffects.PULSE).durationMs());
+            assertEquals(-1, brightness.apply(GlyphEffects.BREATHE).durationMs());
+        }
+    }
+
+    @Test
+    public void brightnessLevelsAreOrdered() {
+        int low = GlyphBrightness.LOW.apply(GlyphEffects.SOLID).brightness(0, SINGLE);
+        int medium = GlyphBrightness.MEDIUM.apply(GlyphEffects.SOLID).brightness(0, SINGLE);
+        int high = GlyphBrightness.HIGH.apply(GlyphEffects.SOLID).brightness(0, SINGLE);
+        assertTrue(low > 0);
+        assertTrue(low < medium);
+        assertTrue(medium < high);
+    }
+
+    @Test
+    public void brightnessIdsRoundTrip() {
+        for (GlyphBrightness brightness : GlyphBrightness.values()) {
+            assertEquals(brightness, GlyphBrightness.fromId(brightness.id));
+        }
+        assertNull(GlyphBrightness.fromId(null));
+        assertNull(GlyphBrightness.fromId(""));
+        assertNull(GlyphBrightness.fromId("blinding"));
     }
 
     private static boolean anyLit(GlyphEffect effect, long t, GlyphChannel[] channels) {
