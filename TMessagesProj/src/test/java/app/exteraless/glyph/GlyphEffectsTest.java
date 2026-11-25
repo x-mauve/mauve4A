@@ -105,12 +105,13 @@ public class GlyphEffectsTest {
         }
         assertNull(GlyphAnimation.fromId(null));
         assertNull(GlyphAnimation.fromId(""));
-        assertNull(GlyphAnimation.fromId("sparkle"));
+        assertNull(GlyphAnimation.fromId("confetti"));
     }
 
     @Test
-    public void waveAndChaseAreOfferedForBothKinds() {
-        GlyphAnimation[] both = {GlyphAnimation.WAVE, GlyphAnimation.CHASE};
+    public void movingAnimationsAreOfferedForBothKinds() {
+        GlyphAnimation[] both = {GlyphAnimation.WAVE, GlyphAnimation.CHASE,
+                GlyphAnimation.PING_PONG, GlyphAnimation.SPARKLE};
         for (GlyphAnimation animation : both) {
             assertTrue(animation.id, GlyphAnimation.oneShot().contains(animation));
             assertTrue(animation.id, GlyphAnimation.lasting().contains(animation));

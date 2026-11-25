@@ -17,7 +17,9 @@ public enum GlyphAnimation {
     BREATHE("breathe", null, GlyphEffects.BREATHE),
     SOLID("solid", null, GlyphEffects.SOLID),
     WAVE("wave", GlyphEffects.WAVE, GlyphEffects.WAVE_LOOP),
-    CHASE("chase", GlyphEffects.CHASE, GlyphEffects.CHASE_LOOP);
+    CHASE("chase", GlyphEffects.CHASE, GlyphEffects.CHASE_LOOP),
+    PING_PONG("pingpong", GlyphEffects.PING_PONG, GlyphEffects.PING_PONG_LOOP),
+    SPARKLE("sparkle", GlyphEffects.SPARKLE, GlyphEffects.SPARKLE_LOOP);
 
     public static final GlyphAnimation DEFAULT_ONE_SHOT = PULSE;
     public static final GlyphAnimation DEFAULT_LASTING = BREATHE;
