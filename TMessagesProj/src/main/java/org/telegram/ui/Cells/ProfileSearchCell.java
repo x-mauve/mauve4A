@@ -44,6 +44,7 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
 import java.util.ArrayList;
 import app.exteraless.badges.ExtraBadgesController;
+import app.exteraless.badges.NameIconPairDrawable;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
@@ -1043,10 +1044,16 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
             statusDrawable.draw(canvas);
 
             if (!nameBadgeDrawable.isEmpty()) {
+                // x is where the status starts, and an empty status still reports its full width
+                final boolean hasStatus = !statusDrawable.isEmpty();
                 if (LocaleController.isRTL) {
-                    x = (int) (nameLeft + nameWidth - Math.ceil(nameLayout.getLineWidth(0)) - dp(3) - statusDrawable.getIntrinsicWidth() - dp(3) - nameBadgeDrawable.getIntrinsicWidth());
-                } else {
-                    x = (int) (nameLeft + nameLayout.getLineRight(0) + dp(6) + statusDrawable.getIntrinsicWidth() + dp(3));
+                    if (hasStatus) {
+                        x -= dp(3) + nameBadgeDrawable.getIntrinsicWidth();
+                    } else {
+                        x += statusDrawable.getIntrinsicWidth() - nameBadgeDrawable.getIntrinsicWidth();
+                    }
+                } else if (hasStatus) {
+                    x += NameIconPairDrawable.contentWidth(statusDrawable) + dp(3);
                 }
                 setDrawableBounds(nameBadgeDrawable, x, nameTop + (nameLayout.getHeight() - nameBadgeDrawable.getIntrinsicHeight()) / 2f);
                 nameBadgeDrawable.draw(canvas);
