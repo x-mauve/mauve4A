@@ -254,6 +254,84 @@ public class GlyphEffectsTest {
         }
     }
 
+    @Test
+    public void pingPongGoesThereAndBack() {
+        GlyphChannel[] channels = GlyphChannel.layout(10);
+        assertEquals(GlyphEffects.MAX_BRIGHTNESS,
+                GlyphEffects.PING_PONG_LOOP.brightness(0, channels[0]));
+        assertEquals(GlyphEffects.MAX_BRIGHTNESS,
+                GlyphEffects.PING_PONG_LOOP.brightness(500, channels[9]));
+        assertEquals(GlyphEffects.MAX_BRIGHTNESS,
+                GlyphEffects.PING_PONG_LOOP.brightness(1000, channels[0]));
+        assertEquals(0, GlyphEffects.PING_PONG_LOOP.brightness(0, channels[9]));
+        assertEquals(0, GlyphEffects.PING_PONG_LOOP.brightness(500, channels[0]));
+    }
+
+    @Test
+    public void pingPongIsSymmetric() {
+        for (GlyphChannel channel : GlyphChannel.layout(10)) {
+            for (long t = 0; t <= 1000; t += STEP_MS) {
+                int value = GlyphEffects.PING_PONG_LOOP.brightness(t, channel);
+                assertEquals("at " + t + " channel " + channel.index, value,
+                        GlyphEffects.PING_PONG_LOOP.brightness(1000 - t, channel));
+                assertEquals("at " + t + " channel " + channel.index, value,
+                        GlyphEffects.PING_PONG_LOOP.brightness(t + 1000, channel));
+            }
+        }
+    }
+
+    @Test
+    public void pingPongStartsAndEndsDark() {
+        GlyphChannel[] channels = GlyphChannel.layout(4);
+        for (long t : new long[]{0, 2000, 5000}) {
+            for (GlyphChannel channel : channels) {
+                assertEquals("at " + t, 0, GlyphEffects.PING_PONG.brightness(t, channel));
+            }
+        }
+        assertEquals(GlyphEffects.MAX_BRIGHTNESS,
+                GlyphEffects.PING_PONG.brightness(500, channels[3]));
+    }
+
+    @Test
+    public void pingPongLeavesNoGaps() {
+        int[][] layouts = {{4}, {11, 5, 20}};
+        for (int[] layout : layouts) {
+            GlyphChannel[] channels = GlyphChannel.layout(layout);
+            for (long t = 0; t <= 1000; t += STEP_MS) {
+                assertTrue("layout " + layout.length + " at " + t,
+                        anyLit(GlyphEffects.PING_PONG_LOOP, t, channels));
+            }
+        }
+    }
+
+    @Test
+    public void pingPongOnOneChannelFallsBack() {
+        GlyphChannel channel = GlyphChannel.layout(1)[0];
+        for (long t = 0; t <= 1500; t += STEP_MS) {
+            assertEquals("at " + t, GlyphEffects.PULSE.brightness(t, channel),
+                    GlyphEffects.PING_PONG.brightness(t, channel));
+            assertEquals("at " + t, GlyphEffects.BREATHE.brightness(t, channel),
+                    GlyphEffects.PING_PONG_LOOP.brightness(t, channel));
+        }
+    }
+
+    @Test
+    public void pingPongStaysInRange() {
+        int[][] layouts = {{1}, {4}, {11, 5, 20}};
+        for (int[] layout : layouts) {
+            for (GlyphChannel channel : GlyphChannel.layout(layout)) {
+                for (long t = -STEP_MS; t <= 3000; t += STEP_MS) {
+                    int value = GlyphEffects.PING_PONG.brightness(t, channel);
+                    assertTrue("ping-pong " + layout.length + " at " + t,
+                            value >= 0 && value <= GlyphEffects.MAX_BRIGHTNESS);
+                    value = GlyphEffects.PING_PONG_LOOP.brightness(t, channel);
+                    assertTrue("ping-pong loop " + layout.length + " at " + t,
+                            value >= 0 && value <= GlyphEffects.MAX_BRIGHTNESS);
+                }
+            }
+        }
+    }
+
     private static boolean anyLit(GlyphEffect effect, long t, GlyphChannel[] channels) {
         for (GlyphChannel channel : channels) {
             if (effect.brightness(t, channel) > 0) {

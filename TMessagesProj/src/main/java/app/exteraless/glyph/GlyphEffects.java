@@ -36,6 +36,14 @@ final class GlyphEffects {
     private static final long CHASE_STEP_MS = 150;
     private static final int CHASE_STEPS = 12;
 
+    private static final long PING_PONG_LEG_MS = 500;
+    private static final long PING_PONG_TRIP_MS = PING_PONG_LEG_MS * 2;
+    private static final int PING_PONG_TRIPS = 2;
+    private static final long PING_PONG_TOTAL_MS = PING_PONG_TRIP_MS * PING_PONG_TRIPS;
+    /** Half-width of the lit spot, as parts of the strip. */
+    private static final double PING_PONG_RADIUS = 0.15;
+    private static final long PING_PONG_FADE_MS = 150;
+
     /** Two flashes with a short gap, for one-off events. */
     static final GlyphEffect PULSE = new GlyphEffect() {
         @Override
@@ -204,6 +212,38 @@ final class GlyphEffects {
         }
     };
 
+    /** A light walking to the last channel and back twice, for one-off events. */
+    static final GlyphEffect PING_PONG = new GlyphEffect() {
+        @Override
+        public long durationMs() {
+            return PING_PONG_TOTAL_MS;
+        }
+
+        @Override
+        public int brightness(long tMs, GlyphChannel channel) {
+            if (tMs < 0 || tMs >= PING_PONG_TOTAL_MS) {
+                return 0;
+            }
+            return pingPong(tMs, channel, true);
+        }
+    };
+
+    /** A light walking to the last channel and back forever, for events that last. */
+    static final GlyphEffect PING_PONG_LOOP = new GlyphEffect() {
+        @Override
+        public long durationMs() {
+            return -1;
+        }
+
+        @Override
+        public int brightness(long tMs, GlyphChannel channel) {
+            if (tMs < 0) {
+                return 0;
+            }
+            return pingPong(tMs, channel, false);
+        }
+    };
+
     /** Linear rise to full brightness over rampMs, then a fall back to zero of the same length. */
     private static int triangle(long tMs, long rampMs) {
         long phase = tMs <= rampMs ? tMs : rampMs * 2 - tMs;
@@ -253,6 +293,36 @@ final class GlyphEffects {
             return 0;
         }
         return channel.segment == step % channel.segmentCount ? MAX_BRIGHTNESS : 0;
+    }
+
+    /**
+     * A lit spot running from the first channel to the last and back, ignoring
+     * zone borders, so the path carries on across them. A single channel has no
+     * direction, so it gets the fallback that suits the kind.
+     */
+    private static int pingPong(long tMs, GlyphChannel channel, boolean oneShot) {
+        if (channel.count <= 1) {
+            return (oneShot ? PULSE : BREATHE).brightness(tMs, channel);
+        }
+        long phase = tMs % PING_PONG_TRIP_MS;
+        long leg = phase <= PING_PONG_LEG_MS ? phase : PING_PONG_TRIP_MS - phase;
+        double position = (channel.count - 1) * (double) leg / PING_PONG_LEG_MS;
+        // At least one channel keeps the spot continuous on short strips.
+        double radius = Math.max(1, PING_PONG_RADIUS * (channel.count - 1));
+        double d = Math.abs(channel.index - position);
+        if (d >= radius) {
+            return 0;
+        }
+        double level = 1 - d / radius;
+        if (oneShot) {
+            // Fade at both ends so the one-shot starts and ends dark.
+            if (tMs < PING_PONG_FADE_MS) {
+                level *= (double) tMs / PING_PONG_FADE_MS;
+            } else if (PING_PONG_TOTAL_MS - tMs < PING_PONG_FADE_MS) {
+                level *= (double) (PING_PONG_TOTAL_MS - tMs) / PING_PONG_FADE_MS;
+            }
+        }
+        return (int) (MAX_BRIGHTNESS * level);
     }
 
     /** Steps a one-shot chase runs: whole passes only, so it never stops mid-pass. */
