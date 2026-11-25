@@ -651,7 +651,11 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
             }
         }
         if (!nameBadgeDrawable.isEmpty()) {
-            nameWidth -= nameBadgeDrawable.getIntrinsicWidth() + dp(3);
+            final int badgeWidth = nameBadgeDrawable.getIntrinsicWidth() + dp(3);
+            nameWidth -= badgeWidth;
+            if (LocaleController.isRTL) {
+                nameLeft += badgeWidth;
+            }
         }
 
         if (nameWidth < 0) {
