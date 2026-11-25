@@ -470,6 +470,19 @@ public class GlyphEffectsTest {
         assertNull(GlyphBrightness.fromId("blinding"));
     }
 
+    @Test
+    public void missingBrightnessIsFull() {
+        GlyphRule twoArgs = new GlyphRule(true, null);
+        GlyphRule fourArgs = new GlyphRule(true, null, GlyphAnimation.PULSE, GlyphAnimation.BREATHE);
+        assertNull(twoArgs.brightness);
+        assertNull(fourArgs.brightness);
+        assertEquals(GlyphBrightness.HIGH, twoArgs.brightnessOrDefault());
+        assertEquals(GlyphBrightness.HIGH, fourArgs.brightnessOrDefault());
+        GlyphRule fiveArgs = new GlyphRule(true, null, null, null, GlyphBrightness.LOW);
+        assertEquals(GlyphBrightness.LOW, fiveArgs.brightness);
+        assertEquals(GlyphBrightness.LOW, fiveArgs.brightnessOrDefault());
+    }
+
     private static boolean anyLit(GlyphEffect effect, long t, GlyphChannel[] channels) {
         for (GlyphChannel channel : channels) {
             if (effect.brightness(t, channel) > 0) {
