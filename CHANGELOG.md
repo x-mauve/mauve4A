@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Glyph:** two more animations, Ping-pong and Sparkle, for messages, calls and
+  voice recording.
+- **Glyph:** a brightness setting in each rule, so every chat can have its own.
+
 ## [0.4.0-preview.2] - 2026-11-24
 
 ### Added
