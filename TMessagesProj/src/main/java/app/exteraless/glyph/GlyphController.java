@@ -153,7 +153,8 @@ public final class GlyphController {
             lastFlashZones = zones;
             // A preview that is still running must not cut this flash short.
             handler.removeCallbacks(previewStopRunnable);
-            local.play(zones, rule.messageAnimationOrDefault().oneShotEffect());
+            local.play(zones, rule.brightnessOrDefault()
+                    .apply(rule.messageAnimationOrDefault().oneShotEffect()));
         });
     }
 
@@ -260,8 +261,8 @@ public final class GlyphController {
             long dialogId = event == GlyphEvent.CALL ? callDialogId : 0;
             GlyphRule rule = GlyphRules.resolve(event, dialogId);
             Set<String> zones = zonesOf(rule);
-            local.play(zones != null ? zones : allZones(),
-                    rule.lastingAnimationOrDefault().lastingEffect());
+            local.play(zones != null ? zones : allZones(), rule.brightnessOrDefault()
+                    .apply(rule.lastingAnimationOrDefault().lastingEffect()));
         }
     }
 
