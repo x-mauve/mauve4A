@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Badges:** the mauve badge no longer sits far from the name or the premium
+  star in search results, including the search when forwarding a message.
+
 ## [0.4.0-preview.3] - 2026-11-25
 
 ### Added
