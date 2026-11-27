@@ -4,6 +4,9 @@ final class GlyphEffects {
 
     static final int MAX_BRIGHTNESS = 4095;
 
+    /** Dim glow in silence, so it's clear the recording is still running. */
+    static final int VOICE_FLOOR = MAX_BRIGHTNESS / 10;
+
     private static final long PULSE_RAMP_MS = 300;
     private static final long PULSE_GAP_MS = 120;
     private static final long PULSE_FLASH_MS = PULSE_RAMP_MS * 2;
@@ -51,6 +54,13 @@ final class GlyphEffects {
     private static final long SPARKLE_RAMP_MS = SPARKLE_SLOT_MS / 2;
     /** Percent of slots in which a channel twinkles on its own, outside its turn. */
     private static final int SPARKLE_CHANCE = 35;
+
+    /** Four syllables a second is about the pace of speech. */
+    private static final long VOICE_SYLLABLE_MS = 250;
+    private static final long VOICE_GAP_MS = 70;
+    private static final long VOICE_RAMP_MS = 30;
+    /** Quietest syllable peak, as percent of full brightness. */
+    private static final int VOICE_PEAK_MIN = 45;
 
     /** Two flashes with a short gap, for one-off events. */
     static final GlyphEffect PULSE = new GlyphEffect() {
@@ -281,6 +291,60 @@ final class GlyphEffects {
                 return 0;
             }
             return sparkle(tMs, channel, false);
+        }
+    };
+
+    /** The microphone level on every channel, for recording. */
+    static GlyphEffect voice(GlyphVoiceLevel level) {
+        return new GlyphEffect() {
+            @Override
+            public long durationMs() {
+                return -1;
+            }
+
+            @Override
+            public int brightness(long tMs, GlyphChannel channel) {
+                return VOICE_FLOOR
+                        + Math.round((MAX_BRIGHTNESS - VOICE_FLOOR) * level.current());
+            }
+        };
+    }
+
+    /** The live microphone level, for recording. */
+    static final GlyphEffect VOICE = voice(GlyphVoiceLevel.SHARED);
+
+    /** A synthetic speech stand-in for the editor, which cannot hear the microphone. */
+    static final GlyphEffect VOICE_PREVIEW = new GlyphEffect() {
+        @Override
+        public long durationMs() {
+            return -1;
+        }
+
+        @Override
+        public int brightness(long tMs, GlyphChannel channel) {
+            if (tMs < 0) {
+                return VOICE_FLOOR;
+            }
+            long syllable = tMs / VOICE_SYLLABLE_MS;
+            long local = tMs % VOICE_SYLLABLE_MS;
+            if (local < VOICE_GAP_MS) {
+                return VOICE_FLOOR;
+            }
+            long length = VOICE_SYLLABLE_MS - VOICE_GAP_MS;
+            long burst = local - VOICE_GAP_MS;
+            int percent = VOICE_PEAK_MIN
+                    + noise(syllable, 7) % (100 - VOICE_PEAK_MIN + 1);
+            int peak = VOICE_FLOOR + (MAX_BRIGHTNESS - VOICE_FLOOR) * percent / 100;
+            long ramp = Math.min(VOICE_RAMP_MS, length / 2);
+            long level;
+            if (burst < ramp) {
+                level = burst * 1000 / ramp;
+            } else if (length - burst < ramp) {
+                level = (length - burst) * 1000 / ramp;
+            } else {
+                level = 1000;
+            }
+            return VOICE_FLOOR + (int) ((peak - VOICE_FLOOR) * level / 1000);
         }
     };
 
