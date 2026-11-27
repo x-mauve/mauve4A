@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-preview.4] - 2026-11-27
+
 ### Added
 
 - **Glyph:** a Voice animation for recording: the glyphs follow how loud you
