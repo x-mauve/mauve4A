@@ -43,6 +43,9 @@ public final class GlyphController {
     /** How long a preview of a lasting animation keeps running. */
     private static final long PREVIEW_LASTING_MS = 3000L;
 
+    /** Full scale of the record button wave; both recorders report on that scale. */
+    private static final double RECORDING_FULL_SCALE = 1800d;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private boolean initialized;
@@ -163,6 +166,8 @@ public final class GlyphController {
             return;
         }
         handler.post(() -> {
+            // A new recording must never start at the level of the last one.
+            GlyphVoiceLevel.SHARED.reset();
             // A disabled rule means the event is not tracked at all, so it
             // neither breathes nor holds back message flashes.
             if (!GlyphRules.resolve(GlyphEvent.RECORDING, 0).enabled) {
@@ -177,9 +182,23 @@ public final class GlyphController {
         // No config check: the glyphs must go dark even if the toggle was
         // flipped in the middle of a recording.
         handler.post(() -> {
+            GlyphVoiceLevel.SHARED.reset();
             recordingActive = false;
             updateActiveEvent();
         });
+    }
+
+    /**
+     * The microphone level of the recording, on the record button wave's scale.
+     * Called on the audio thread for every buffer, so it must stay cheap and
+     * must not post to the handler.
+     */
+    public void onRecordingLevel(double amplitude) {
+        if (!GlyphConfig.enabled()) {
+            return;
+        }
+        GlyphVoiceLevel.SHARED.push(
+                (float) Math.min(1d, Math.max(0d, amplitude / RECORDING_FULL_SCALE)));
     }
 
     public void onIncomingCallStarted(long dialogId, int account) {

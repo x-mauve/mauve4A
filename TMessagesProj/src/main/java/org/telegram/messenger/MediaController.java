@@ -1326,6 +1326,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
                         recordQueue.postRunnable(() -> recordBuffers.add(finalBuffer));
                     });
                     recordQueue.postRunnable(recordRunnable);
+                    app.exteraless.glyph.GlyphController.getInstance().onRecordingLevel(amplitude);
                     AndroidUtilities.runOnUIThread(() -> NotificationCenter.getInstance(recordingCurrentAccount).postNotificationName(NotificationCenter.recordProgressChanged, recordingGuid, amplitude));
                 } else {
                     recordBuffers.add(buffer);
@@ -4857,6 +4858,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
             public void onRecordingProgress(long durationMs, double amplitude) {
                 recordTimeCount = durationMs;
                 // The record button wave is tuned for the legacy amplitude, which is half of the RMS.
+                app.exteraless.glyph.GlyphController.getInstance().onRecordingLevel(amplitude / 2d);
                 NotificationCenter.getInstance(recordingCurrentAccount).postNotificationName(
                         NotificationCenter.recordProgressChanged,
                         recordingGuid,
