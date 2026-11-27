@@ -56,6 +56,8 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
     /** Animations picked on screen. Only the ones matching the rule type are shown and saved. */
     private GlyphAnimation messageAnimation;
     private GlyphAnimation lastingAnimation;
+    /** Lasting animations offered for this rule; a chat rule's lasting section is for calls. */
+    private List<GlyphAnimation> lastingAnimations;
     /** Brightness picked on screen, shared by both kinds in a chat rule. */
     private GlyphBrightness brightness;
 
@@ -145,6 +147,7 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         }
 
         zones = GlyphDevice.current().zones;
+        lastingAnimations = GlyphAnimation.lasting(event == null ? GlyphEvent.CALL : event);
         ruleEnabled = rule.enabled;
         messageAnimation = rule.messageAnimationOrDefault();
         lastingAnimation = rule.lastingAnimationOrDefault(
@@ -188,8 +191,7 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         if (showsLastingAnimation()) {
             lastingAnimationHeaderRow = addRow();
             lastingAnimationStartRow = rowCount;
-            rowCount += GlyphAnimation.lasting(
-                    event == null ? GlyphEvent.CALL : event).size();
+            rowCount += lastingAnimations.size();
             lastingAnimationEndRow = rowCount;
         } else {
             lastingAnimationHeaderRow = lastingAnimationStartRow = lastingAnimationEndRow = -1;
@@ -261,9 +263,7 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                     messageAnimationEndRow - messageAnimationStartRow);
             save();
         } else if (position >= lastingAnimationStartRow && position < lastingAnimationEndRow) {
-            lastingAnimation = GlyphAnimation.lasting(
-                    event == null ? GlyphEvent.CALL : event)
-                    .get(position - lastingAnimationStartRow);
+            lastingAnimation = lastingAnimations.get(position - lastingAnimationStartRow);
             listAdapter.notifyItemRangeChanged(lastingAnimationStartRow,
                     lastingAnimationEndRow - lastingAnimationStartRow);
             save();
@@ -324,6 +324,8 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                 return R.string.OEGlyphAnimationPingPong;
             case SPARKLE:
                 return R.string.OEGlyphAnimationSparkle;
+            case VOICE:
+                return R.string.OEGlyphAnimationVoice;
             case PULSE:
             default:
                 return R.string.OEGlyphAnimationPulse;
@@ -425,9 +427,8 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                                 animation == messageAnimation, position + 1 < messageAnimationEndRow);
                     } else if (position >= lastingAnimationStartRow
                             && position < lastingAnimationEndRow) {
-                        GlyphAnimation animation = GlyphAnimation.lasting(
-                                event == null ? GlyphEvent.CALL : event)
-                                .get(position - lastingAnimationStartRow);
+                        GlyphAnimation animation =
+                                lastingAnimations.get(position - lastingAnimationStartRow);
                         cell.setTextAndCheck(getString(animationName(animation)),
                                 animation == lastingAnimation, position + 1 < lastingAnimationEndRow);
                     } else {

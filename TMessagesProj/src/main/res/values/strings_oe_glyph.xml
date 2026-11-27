@@ -28,6 +28,7 @@
     <string name="OEGlyphAnimationChase">Chase</string>
     <string name="OEGlyphAnimationPingPong">Ping-pong</string>
     <string name="OEGlyphAnimationSparkle">Sparkle</string>
+    <string name="OEGlyphAnimationVoice">Voice</string>
     <string name="OEGlyphRuleBrightness">Brightness</string>
     <string name="OEGlyphBrightnessLow">Low</string>
     <string name="OEGlyphBrightnessMedium">Medium</string>

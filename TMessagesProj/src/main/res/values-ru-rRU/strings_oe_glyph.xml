@@ -27,6 +27,7 @@
     <string name="OEGlyphAnimationChase">Бегущий огонь</string>
     <string name="OEGlyphAnimationPingPong">Пинг-понг</string>
     <string name="OEGlyphAnimationSparkle">Искры</string>
+    <string name="OEGlyphAnimationVoice">Голос</string>
     <string name="OEGlyphRuleBrightness">Яркость</string>
     <string name="OEGlyphBrightnessLow">Низкая</string>
     <string name="OEGlyphBrightnessMedium">Средняя</string>
