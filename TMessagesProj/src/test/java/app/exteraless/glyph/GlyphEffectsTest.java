@@ -75,7 +75,7 @@ public class GlyphEffectsTest {
 
     @Test
     public void lastingEffectsRunUntilStopped() {
-        for (GlyphAnimation animation : GlyphAnimation.lasting()) {
+        for (GlyphAnimation animation : GlyphAnimation.lasting(GlyphEvent.RECORDING)) {
             assertEquals(animation.id, -1, animation.lastingEffect().durationMs());
         }
         assertEquals(GlyphEffects.MAX_BRIGHTNESS, GlyphEffects.SOLID.brightness(60000, SINGLE));
@@ -88,7 +88,7 @@ public class GlyphEffectsTest {
             assertEquals(animation.id, animation.supportsOneShot(),
                     GlyphAnimation.oneShot().contains(animation));
             assertEquals(animation.id, animation.supportsLasting(),
-                    GlyphAnimation.lasting().contains(animation));
+                    GlyphAnimation.lasting(GlyphEvent.RECORDING).contains(animation));
         }
     }
 
@@ -96,7 +96,7 @@ public class GlyphEffectsTest {
     public void wrongKindFallsBackToDefault() {
         GlyphRule rule = new GlyphRule(true, null, GlyphAnimation.BREATHE, GlyphAnimation.PULSE);
         assertEquals(GlyphAnimation.PULSE, rule.messageAnimationOrDefault());
-        assertEquals(GlyphAnimation.BREATHE, rule.lastingAnimationOrDefault());
+        assertEquals(GlyphAnimation.BREATHE, rule.lastingAnimationOrDefault(GlyphEvent.CALL));
     }
 
     @Test
@@ -115,7 +115,7 @@ public class GlyphEffectsTest {
                 GlyphAnimation.PING_PONG, GlyphAnimation.SPARKLE};
         for (GlyphAnimation animation : both) {
             assertTrue(animation.id, GlyphAnimation.oneShot().contains(animation));
-            assertTrue(animation.id, GlyphAnimation.lasting().contains(animation));
+            assertTrue(animation.id, GlyphAnimation.lasting(GlyphEvent.CALL).contains(animation));
             assertTrue(animation.id, animation.oneShotEffect().durationMs() > 0);
             assertEquals(animation.id, -1, animation.lastingEffect().durationMs());
         }

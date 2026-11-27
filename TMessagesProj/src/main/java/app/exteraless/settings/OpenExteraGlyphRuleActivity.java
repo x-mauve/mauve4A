@@ -147,7 +147,8 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         zones = GlyphDevice.current().zones;
         ruleEnabled = rule.enabled;
         messageAnimation = rule.messageAnimationOrDefault();
-        lastingAnimation = rule.lastingAnimationOrDefault();
+        lastingAnimation = rule.lastingAnimationOrDefault(
+                event == null ? GlyphEvent.CALL : event);
         brightness = rule.brightnessOrDefault();
         // Ids from another phone model can arrive with a settings backup.
         for (GlyphZone zone : zones) {
@@ -187,7 +188,8 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
         if (showsLastingAnimation()) {
             lastingAnimationHeaderRow = addRow();
             lastingAnimationStartRow = rowCount;
-            rowCount += GlyphAnimation.lasting().size();
+            rowCount += GlyphAnimation.lasting(
+                    event == null ? GlyphEvent.CALL : event).size();
             lastingAnimationEndRow = rowCount;
         } else {
             lastingAnimationHeaderRow = lastingAnimationStartRow = lastingAnimationEndRow = -1;
@@ -259,7 +261,9 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                     messageAnimationEndRow - messageAnimationStartRow);
             save();
         } else if (position >= lastingAnimationStartRow && position < lastingAnimationEndRow) {
-            lastingAnimation = GlyphAnimation.lasting().get(position - lastingAnimationStartRow);
+            lastingAnimation = GlyphAnimation.lasting(
+                    event == null ? GlyphEvent.CALL : event)
+                    .get(position - lastingAnimationStartRow);
             listAdapter.notifyItemRangeChanged(lastingAnimationStartRow,
                     lastingAnimationEndRow - lastingAnimationStartRow);
             save();
@@ -421,8 +425,9 @@ public class OpenExteraGlyphRuleActivity extends BaseNekoSettingsActivity {
                                 animation == messageAnimation, position + 1 < messageAnimationEndRow);
                     } else if (position >= lastingAnimationStartRow
                             && position < lastingAnimationEndRow) {
-                        GlyphAnimation animation =
-                                GlyphAnimation.lasting().get(position - lastingAnimationStartRow);
+                        GlyphAnimation animation = GlyphAnimation.lasting(
+                                event == null ? GlyphEvent.CALL : event)
+                                .get(position - lastingAnimationStartRow);
                         cell.setTextAndCheck(getString(animationName(animation)),
                                 animation == lastingAnimation, position + 1 < lastingAnimationEndRow);
                     } else {

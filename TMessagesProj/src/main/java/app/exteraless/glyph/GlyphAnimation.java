@@ -2,7 +2,9 @@ package app.exteraless.glyph;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The animation a rule plays. Rules store the id, so ids must never change.
@@ -19,13 +21,14 @@ public enum GlyphAnimation {
     WAVE("wave", GlyphEffects.WAVE, GlyphEffects.WAVE_LOOP),
     CHASE("chase", GlyphEffects.CHASE, GlyphEffects.CHASE_LOOP),
     PING_PONG("pingpong", GlyphEffects.PING_PONG, GlyphEffects.PING_PONG_LOOP),
-    SPARKLE("sparkle", GlyphEffects.SPARKLE, GlyphEffects.SPARKLE_LOOP);
+    SPARKLE("sparkle", GlyphEffects.SPARKLE, GlyphEffects.SPARKLE_LOOP),
+    VOICE("voice", null, GlyphEffects.VOICE, true);
 
     public static final GlyphAnimation DEFAULT_ONE_SHOT = PULSE;
     public static final GlyphAnimation DEFAULT_LASTING = BREATHE;
 
     private static final List<GlyphAnimation> ONE_SHOT;
-    private static final List<GlyphAnimation> LASTING;
+    private static final Map<GlyphEvent, List<GlyphAnimation>> LASTING;
 
     static {
         List<GlyphAnimation> oneShot = new ArrayList<>();
@@ -39,18 +42,36 @@ public enum GlyphAnimation {
             }
         }
         ONE_SHOT = Collections.unmodifiableList(oneShot);
-        LASTING = Collections.unmodifiableList(lasting);
+        Map<GlyphEvent, List<GlyphAnimation>> byEvent = new EnumMap<>(GlyphEvent.class);
+        for (GlyphEvent event : GlyphEvent.values()) {
+            List<GlyphAnimation> list = new ArrayList<>();
+            for (GlyphAnimation animation : lasting) {
+                if (animation.fits(event)) {
+                    list.add(animation);
+                }
+            }
+            byEvent.put(event, Collections.unmodifiableList(list));
+        }
+        LASTING = Collections.unmodifiableMap(byEvent);
     }
 
     /** Stored in the rules JSON. */
     public final String id;
     private final GlyphEffect oneShotEffect;
     private final GlyphEffect lastingEffect;
+    /** Voice only makes sense while the microphone records, never during a call. */
+    private final boolean recordingOnly;
 
     GlyphAnimation(String id, GlyphEffect oneShotEffect, GlyphEffect lastingEffect) {
+        this(id, oneShotEffect, lastingEffect, false);
+    }
+
+    GlyphAnimation(String id, GlyphEffect oneShotEffect, GlyphEffect lastingEffect,
+                   boolean recordingOnly) {
         this.id = id;
         this.oneShotEffect = oneShotEffect;
         this.lastingEffect = lastingEffect;
+        this.recordingOnly = recordingOnly;
     }
 
     /** True when the animation fits one-off events such as messages. */
@@ -63,6 +84,19 @@ public enum GlyphAnimation {
         return lastingEffect != null;
     }
 
+    /** True when the animation may play for this event. */
+    public boolean fits(GlyphEvent event) {
+        switch (event) {
+            case MESSAGE:
+                return supportsOneShot();
+            case CALL:
+                return supportsLasting() && !recordingOnly;
+            case RECORDING:
+            default:
+                return supportsLasting();
+        }
+    }
+
     /** The one-shot effect, null when the animation does not fit one-off events. */
     GlyphEffect oneShotEffect() {
         return oneShotEffect;
@@ -71,6 +105,11 @@ public enum GlyphAnimation {
     /** The lasting effect, null when the animation does not fit events that last. */
     GlyphEffect lastingEffect() {
         return lastingEffect;
+    }
+
+    /** What the editor plays for this lasting animation: a stand-in for Voice. */
+    GlyphEffect previewLastingEffect() {
+        return this == VOICE ? GlyphEffects.VOICE_PREVIEW : lastingEffect;
     }
 
     /** Null for an unknown or missing id. */
@@ -90,8 +129,8 @@ public enum GlyphAnimation {
         return ONE_SHOT;
     }
 
-    /** Animations for events that last, such as calls and voice recording. */
-    public static List<GlyphAnimation> lasting() {
-        return LASTING;
+    /** Animations that fit events that last, filtered for the event in charge. */
+    public static List<GlyphAnimation> lasting(GlyphEvent event) {
+        return LASTING.get(event);
     }
 }

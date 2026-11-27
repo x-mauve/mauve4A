@@ -47,9 +47,9 @@ public final class GlyphRule {
                 : messageAnimation;
     }
 
-    /** The call and recording animation, or the default when none is stored or it only flashes. */
-    public GlyphAnimation lastingAnimationOrDefault() {
-        return lastingAnimation == null || !lastingAnimation.supportsLasting()
+    /** The lasting animation when it fits the event, or the default otherwise. */
+    public GlyphAnimation lastingAnimationOrDefault(GlyphEvent event) {
+        return lastingAnimation == null || !lastingAnimation.fits(event)
                 ? GlyphAnimation.DEFAULT_LASTING
                 : lastingAnimation;
     }

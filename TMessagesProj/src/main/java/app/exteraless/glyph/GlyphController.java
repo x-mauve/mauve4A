@@ -227,11 +227,11 @@ public final class GlyphController {
             // may show up in both sections of a chat rule.
             boolean lasting = event != GlyphEvent.MESSAGE;
             GlyphAnimation shown = animation;
-            if (shown == null || (lasting ? !shown.supportsLasting() : !shown.supportsOneShot())) {
+            if (shown == null || !shown.fits(event)) {
                 shown = defaultAnimation(event);
             }
             local.play(target, (brightness != null ? brightness : GlyphBrightness.DEFAULT)
-                    .apply(lasting ? shown.lastingEffect() : shown.oneShotEffect()));
+                    .apply(lasting ? shown.previewLastingEffect() : shown.oneShotEffect()));
             if (lasting) {
                 handler.postDelayed(previewStopRunnable, PREVIEW_LASTING_MS);
             }
@@ -264,7 +264,7 @@ public final class GlyphController {
             GlyphRule rule = GlyphRules.resolve(event, dialogId);
             Set<String> zones = zonesOf(rule);
             local.play(zones != null ? zones : allZones(), rule.brightnessOrDefault()
-                    .apply(rule.lastingAnimationOrDefault().lastingEffect()));
+                    .apply(rule.lastingAnimationOrDefault(event).lastingEffect()));
         }
     }
 
