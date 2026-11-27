@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Glyph:** a Voice animation for recording: the glyphs follow how loud you
+  speak and keep a dim glow in silence.
+- **Glyph:** recording a video message now lights the glyphs too, like a voice
+  message.
+
 ### Fixed
 
 - **Badges:** the mauve badge no longer sits far from the name or the premium
