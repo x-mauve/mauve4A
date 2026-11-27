@@ -185,6 +185,8 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
     private boolean recording;
     private long recordedTime;
     private boolean cancelled;
+    /** True while the glyphs are lit for this video message recording. */
+    private boolean glyphRecording;
 
     private CameraGLThread cameraThread;
     private Size[] previewSize = new Size[2];
@@ -706,6 +708,7 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
     }
 
     public void destroy(boolean async) {
+        stopGlyphRecording();
         AndroidUtilities.runOnUIThread(zoomSlider::unbindSession);
         if (useCameraX) {
             releaseCameraXSession();
@@ -785,10 +788,26 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
         }
     }
 
+    /** Starts the glyph recording event; every camera path shares this recorder. */
+    private void startGlyphRecording() {
+        glyphRecording = true;
+        app.exteraless.glyph.GlyphController.getInstance().onRecordingStarted();
+    }
+
+    /** Ends the glyph recording event; safe on any path that stops or tears down the recorder. */
+    private void stopGlyphRecording() {
+        if (!glyphRecording) {
+            return;
+        }
+        glyphRecording = false;
+        app.exteraless.glyph.GlyphController.getInstance().onRecordingStopped();
+    }
+
     public void togglePause() {
         if (recording) {
             cancelled = recordedTime < 800;
             recording = false;
+            stopGlyphRecording();
             updateFlash();
             if (cameraThread != null) {
                 NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordStopped, recordingGuid, cancelled ? 4 : 2);
@@ -981,6 +1000,7 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
 
             @Override
             public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+                stopGlyphRecording();
                 if (cameraThread != null) {
                     cameraThread.shutdown(0, true, 0, 0, 0, 0);
                     cameraThread = null;
@@ -1129,6 +1149,7 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
     }
 
     public void send(int state, boolean notify, int scheduleDate, int scheduleRepeatPeriod, int ttl, long effectId, long stars) {
+        stopGlyphRecording();
         if (textureView == null) {
             return;
         }
@@ -1235,6 +1256,7 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
     }
 
     public void cancel(boolean byGesture) {
+        stopGlyphRecording();
         stopProgressTimer();
         if (videoPlayer != null) {
             videoPlayer.releasePlayer(true);
@@ -2653,6 +2675,7 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
                                 s += p * p;
                             }
                             double amplitude = Math.sqrt(s / readResult / 2);
+                            app.exteraless.glyph.GlyphController.getInstance().onRecordingLevel(amplitude);
                             AndroidUtilities.runOnUIThread(() -> NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordProgressChanged, recordingGuid, amplitude));
                             byteBuffer.position(0);
                         }
@@ -3601,6 +3624,7 @@ public class InstantCameraView extends InstantCameraViewBase implements Notifica
                     recording = true;
                     updateFlash();
                     invalidate();
+                    startGlyphRecording();
                     NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.recordStarted, recordingGuid, false);
                 });
             } catch (Exception ioe) {
